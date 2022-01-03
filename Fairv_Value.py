@@ -6,60 +6,60 @@ import statistics as stat
 class Estimate:
     current_year = 2022
 
-    # __init__ to run all calcs at once
-    def __init__(self, eps, growth, ror, mos, pe, time_period, current_price, net_income, depre_amat, oncc, capex,
-                 capital_change, shares, ev, ebitda, fcf, fcf_growth):
+    def __init__(self, stock, time_period, rate_of_return):
 
-        self.eps = eps
-        self.growth = growth
-        self.ror = ror
-        self.mos = mos
-        self.pe = pe
+        self.stock = stock
         self.time_period = time_period
-        self.current_price = current_price
-        self.net_income = net_income
-        self.depre_amat = depre_amat
-        self.oncc = oncc
-        self.capex = capex
-        self.capital_change = capital_change
-        self.shares = shares
-        self.ev = ev
-        self.ebitda = ebitda
-        self.fcf = fcf
-        self.fcf_growth = fcf_growth
+        self.rate_of_return = rate_of_return
 
-    def __price(self, eps, year, earnings_ratio):
-        return (eps[self.time_period + Estimate.current_year] * earnings_ratio) / ((1 + self.ror) ** year)
+        self.eps_growth_rates = Estimate.__growth_rates(self.stock.eps)
+        self.ebitda_growth_rates = Estimate.__growth_rates(self.stock.ebitda)
+        self.revenue_growth_rates = Estimate.__growth_rates(self.stock.revenue)
+        self.net_cash_flow_growth_rates = Estimate.__growth_rates(self.stock.net_cash_flow)
+        self.net_income_growth_rates = Estimate.__growth_rates(self.stock.net_income)
 
-    def __eps(self, eps, year, growth):
+    @staticmethod
+    def __growth_rates(series):
+        growth_rate = []
+        val1 = 0
+        for i in series:
+            try:
+                val2 = val1
+                val1 = float(i)
+                growth_rate.append(val2 / val1 - 1)
+            except:
+                print("prob just a header")
+                pass
+        return growth_rate
+
+    def __price_growth(self, eps, year, earnings_ratio):
+        return (eps[self.time_period + Estimate.current_year] * earnings_ratio) / ((1 + self.rate_of_return) ** year)
+
+    def __eps_growth(self, eps, year, growth):
         return eps * ((1 + growth) ** year)
 
     def basic_projection(self):
         price = {}
         eps = {}
 
-        # Loops to calculate yearly EPS and price estimate
+        avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps(self.eps, i, self.growth)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price(eps, i, self.pe)
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.pe[0])
         return price, eps
 
     def owners_earnings_projection(self):
         price = {}
         eps = {}
 
-        # Calculate Owner's Earnings per share and price per Owner's Earnings
-        oeps = (self.net_income + self.depre_amat + self.oncc + self.capex + self.capital_change) / self.shares
-        poe = self.current_price / oeps
-
-        # Replace pe with poe and EPS with oeps and run eval; same calc as basic eval
+        avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps(oeps, i, self.growth)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[-1], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price(eps, i, poe)
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.price_owners_earnings[0])
 
         return price, eps
 
@@ -67,15 +67,12 @@ class Estimate:
         price = {}
         eps = {}
 
-        # Calculate EV/EBITDA
-        evebitda = self.ev / self.ebitda
-
-        # Replace pe with EV/EBITDA; same calc as basic eval
+        avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps(self.eps, i, self.growth)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[-1], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price(eps, i, evebitda)
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.evebitda[0])
 
         return price, eps
 
@@ -84,16 +81,17 @@ class Estimate:
         eps = {}
 
         # Calculate free cash flow EPS and pe
-        fcfeps = self.fcf / self.shares
+        fcfeps = self.stock.net_cash_flow[0] / self.stock.shares_outstanding[0]
 
-        fcfpe = self.current_price / fcfeps
+        fcfpe = self.stock.market_price / fcfeps
 
+        avg_growth_rate = stat.mean(self.net_cash_flow_growth_rates)
         # Replace pe with poe and EPS with oeps and run eval
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps(fcfeps, i, self.fcf_growth)
+            eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price(eps, i, fcfpe)
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, fcfpe)
         return price, eps
 
 
@@ -144,13 +142,3 @@ class Analysis(Projection):
             # plt.scatter(i, self.avg_fair_value[i], s=50, c='yellow')
 
         plt.show()
-
-
-x = Estimate(6.17, .05, .1, .15, 8.98, 5, 56.83, 4778, 1214, 270, -.46, -304, 661.53, 40.12, 5.59, 5538, .1)
-etsyAnalysis = Analysis()
-etsyAnalysis.owners_earnings.price,  etsyAnalysis.fcf.eps = x.owners_earnings_projection()
-etsyAnalysis.fcf.price,  etsyAnalysis.fcf.eps = x.fcf_projection()
-etsyAnalysis.evebitda.price,  etsyAnalysis.evebitda.eps = x.evebitda_projection()
-etsyAnalysis.basic.price,  etsyAnalysis.basic.eps = x.basic_projection()
-
-etsyAnalysis.price_plot()
