@@ -2,7 +2,7 @@ from stock import Stock
 import FairValue as fv
 
 if __name__ == "__main__":
-    msft = Stock('msft', 'microsoft')
+    msft = Stock('tsla', 'tesla')
     x = fv.Estimate(msft, 5, .1)
     etsyAnalysis = fv.Analysis()
     etsyAnalysis.owners_earnings.price,  etsyAnalysis.owners_earnings.eps = x.owners_earnings_projection()

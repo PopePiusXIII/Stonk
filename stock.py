@@ -20,7 +20,7 @@ class Stock:
         self.capex = self.cashflow_sheet.iloc[17, 1:].astype(float)
         self.shares_outstanding = self.income_statement.iloc[19, 1:].astype(float)
         self.market_price = self._yfin_data.info['bid']
-        self.enterprise_value = self._yfin_data.info['enterpriseValue']
+        self.enterprise_value = self._yfin_data.info['enterpriseValue'] / 10**6
         self.capital_change = 0
         self.owner_earnings_per_share = (self.net_income + self.depreciation_amortization + self.other_noncash_items +
                                          self.capex + self.capital_change) / self.shares_outstanding

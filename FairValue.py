@@ -21,8 +21,8 @@ class Estimate:
     @staticmethod
     def __growth_rates(series):
         growth_rate = []
-        val1 = 0
-        for i in series:
+        val1 = series[0]
+        for i in series[1:]:
             try:
                 val2 = val1
                 val1 = float(i)
@@ -69,7 +69,7 @@ class Estimate:
 
         avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[-1], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
             price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.evebitda[0])
