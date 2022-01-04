@@ -54,7 +54,7 @@ class Estimate:
 
         avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[-1], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[0], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
             price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.price_owners_earnings[0])
@@ -65,9 +65,9 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
+        avg_growth_rate = stat.mean(self.ebitda_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[-1], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.ebitda_per_share[0], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
             price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.ev_ebitda[0])
@@ -133,10 +133,10 @@ class Analysis(Projection):
 
     def price_plot(self):
         for i in self.fcf.price.keys():
-            plt.scatter(i, self.fcf.price[i], c='black')
-            plt.scatter(i, self.evebitda.price[i], c='blue')
-            plt.scatter(i, self.owners_earnings.price[i], c='green')
-            plt.scatter(i, self.basic.price[i], c='purple')
+            plt.scatter(i, self.fcf.price[i], c='black', label='fcf')
+            plt.scatter(i, self.evebitda.price[i], c='blue', label='ev ebitda')
+            plt.scatter(i, self.owners_earnings.price[i], c='green', label='owners earnings')
+            plt.scatter(i, self.basic.price[i], c='purple', label='basic')
             # plt.scatter(i, self.avg_fair_value[i], s=50, c='yellow')
-
+        plt.legend()
         plt.show()
