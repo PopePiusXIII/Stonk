@@ -23,7 +23,7 @@ def get_financial_sheet(ticker, companyname, tabname):
     result = []
 
     for row in data:
-        soup = bs(row['field_name'])
+        soup = bs(row['field_name'], features="lxml")
         field_name = soup.select_one('a, span').text
         fields = list(row.values())[2:]
         fields.insert(0, field_name)
