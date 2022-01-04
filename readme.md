@@ -1,6 +1,4 @@
-msfttrial is the example of how to use this code.
-
-All data comes from macrotrends and includes its historical values
+msfttrial is the example of how to use this code. All data comes from macrotrends and includes its historical values.
 
 calculations made so far are
   - owners earnings
@@ -8,4 +6,4 @@ calculations made so far are
   - basic eps growth
   - evebitda 
 
-Future plans will use line fitting and report confidence intervals of prediction based on fit error of key channels 
+Future plans will use line fitting and report confidence intervals of prediction based on fit error of key channels. Also the equations used are unverified. They need to be fact checked and cited.
