@@ -12,6 +12,7 @@ class Estimate:
         self.rate_of_return = rate_of_return
 
         self.eps_growth_rates = Estimate.__growth_rates(self.stock.eps)
+        self.owners_earnings_per_share_growth_rates = Estimate.__growth_rates(self.stock.owner_earnings_per_share)
         self.ebitda_growth_rates = Estimate.__growth_rates(self.stock.ebitda)
         self.revenue_growth_rates = Estimate.__growth_rates(self.stock.revenue)
         self.free_cash_flow_growth_rates = Estimate.__growth_rates(self.stock.free_cash_flow_to_equity)
@@ -40,7 +41,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
+        avg_growth_rate = stat.median(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
 
@@ -52,7 +53,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
+        avg_growth_rate = stat.median(self.owners_earnings_per_share_growth_rates)
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[0], i, avg_growth_rate)
 
@@ -65,7 +66,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.mean(self.ebitda_growth_rates)
+        avg_growth_rate = stat.median(self.ebitda_growth_rates)
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.ebitda_per_share[0], i, avg_growth_rate)
 
@@ -83,7 +84,7 @@ class Estimate:
 
         fcfpe = self.stock.market_price / fcfeps
 
-        avg_growth_rate = stat.mean(self.free_cash_flow_growth_rates)
+        avg_growth_rate = stat.median(self.free_cash_flow_growth_rates)
         # Replace pe with poe and EPS with oeps and run eval
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)
