@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import statistics as stat
 
 
-# Basic Eval, EV/EBITDA, Owner's Earnings, and Basic FCF class CurrentEstimates:
 class Estimate:
     current_year = 2022
 
@@ -15,18 +14,17 @@ class Estimate:
         self.eps_growth_rates = Estimate.__growth_rates(self.stock.eps)
         self.ebitda_growth_rates = Estimate.__growth_rates(self.stock.ebitda)
         self.revenue_growth_rates = Estimate.__growth_rates(self.stock.revenue)
-        self.net_cash_flow_growth_rates = Estimate.__growth_rates(self.stock.net_cash_flow)
+        self.free_cash_flow_growth_rates = Estimate.__growth_rates(self.stock.free_cash_flow_to_equity)
         self.net_income_growth_rates = Estimate.__growth_rates(self.stock.net_income)
 
     @staticmethod
     def __growth_rates(series):
         growth_rate = []
-        val1 = series[0]
-        for i in series[1:]:
+        for i in range(1, len(series), 1):
             try:
-                val2 = val1
-                val1 = float(i)
-                growth_rate.append(val2 / val1 - 1)
+                val2 = float(series[i])
+                val1 = float(series[i-1])
+                growth_rate.append(val1 / val2 - 1)
             except:
                 print("prob just a header")
                 pass
@@ -69,10 +67,10 @@ class Estimate:
 
         avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[-1], i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.evebitda[0])
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.ev_ebitda[0])
 
         return price, eps
 
@@ -81,11 +79,11 @@ class Estimate:
         eps = {}
 
         # Calculate free cash flow EPS and pe
-        fcfeps = self.stock.net_cash_flow[0] / self.stock.shares_outstanding[0]
+        fcfeps = self.stock.free_cash_flow_to_equity_per_share[0]
 
         fcfpe = self.stock.market_price / fcfeps
 
-        avg_growth_rate = stat.mean(self.net_cash_flow_growth_rates)
+        avg_growth_rate = stat.mean(self.free_cash_flow_growth_rates)
         # Replace pe with poe and EPS with oeps and run eval
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)
