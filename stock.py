@@ -37,6 +37,8 @@ class Stock:
         self.free_cash_flow_to_equity_per_share = self.free_cash_flow_to_equity / self.shares_outstanding
         self.price_owners_earnings = self.market_price / self.owner_earnings_per_share
         self.ev_ebitda = self.enterprise_value / self.ebitda
+        self.ebitda_per_share = self.ebitda / self.shares_outstanding
+        print("Hi")
 
 
 if __name__ == "__main__":
