@@ -35,6 +35,7 @@ class Stock:
         self.owner_earnings_per_share = (self.net_income + self.depreciation_amortization + self.other_noncash_items +
                                          self.capex + self.capital_change) / self.shares_outstanding
         self.free_cash_flow_to_equity_per_share = self.free_cash_flow_to_equity / self.shares_outstanding
+        self.price_free_cash_flow = self.market_price / self.free_cash_flow_to_equity_per_share
         self.price_owners_earnings = self.market_price / self.owner_earnings_per_share
         self.ev_ebitda = self.enterprise_value / self.ebitda
         self.ebitda_per_share = self.ebitda / self.shares_outstanding
