@@ -28,7 +28,7 @@ class Stock:
         self.pe = mts.get_table(ticker, company_name, 'pe-ratio').iloc[:, -1]
         self.pfcf = mts.get_table(ticker, company_name, 'price-fcf').iloc[:, -1]
 
-        self.market_price = self._yfin_data.info['bid']
+        self.market_price = self._yfin_data.info['currentPrice']
         self.enterprise_value = self._yfin_data.info['enterpriseValue'] / 10**6
 
         self.capital_change = 0
