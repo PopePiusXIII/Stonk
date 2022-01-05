@@ -25,8 +25,11 @@ class Stock:
         self.debt_issuance_retirement_net = self.cashflow_sheet.iloc[20, 1:].astype(float)
         self.free_cash_flow_to_equity = self.capex + self.cash_from_operating + self.debt_issuance_retirement_net
 
-        self.pe = mts.get_table(ticker, company_name, 'pe-ratio').iloc[:, -1]
-        self.pfcf = mts.get_table(ticker, company_name, 'price-fcf').iloc[:, -1]
+        self.finance_report_date = self.balance_sheet.axes[1][1]
+        self.pe_table = mts.get_table(ticker, company_name, 'pe-ratio')
+        self.pe = self.pe_table.iloc[:, -1]
+        self.pfcf_table = mts.get_table(ticker, company_name, 'price-fcf')
+        self.pfcf = self.pfcf_table.iloc[:, -1]
 
         self.market_price = self._yfin_data.info['currentPrice']
         self.enterprise_value = self._yfin_data.info['enterpriseValue'] / 10**6
