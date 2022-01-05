@@ -24,64 +24,53 @@ class Estimate:
         rate = (series[1]/series[-1]) ** (1 / time_history) -1
         return rate
 
-    def __price_growth(self, eps, year, earnings_ratio):
-        return (eps[self.time_period + Estimate.current_year] * earnings_ratio) / ((1 + self.rate_of_return) ** year)
+    def __price_growth(self, eps, year, price_to_earnings_ratio):
+        return (eps[self.time_period + Estimate.current_year] * price_to_earnings_ratio) / ((1 + self.rate_of_return) ** year)
 
     @staticmethod
     def __eps_growth(eps, year, growth):
         return eps * ((1 + growth) ** year)
 
-    def basic_projection(self):
+    def discount_cash_flow(self, current_eps, avg_growth_rate, price_to_earnings):
+        """
+        :param current_eps: most recent annual eps (float)
+        :param avg_growth_rate: rate of earnings growth (float) 10% is .1
+        :param price_to_earnings: price to earnings ratio (float)
+        :return:
+        """
         price = {}
         eps = {}
 
-        avg_growth_rate = self.eps_growth_rate
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(current_eps, i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.pe[0])
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, price_to_earnings)
+        return price, eps
+
+    def basic_projection(self):
+        price, eps = self.discount_cash_flow(self.stock.eps[0], self.eps_growth_rate, self.stock.pe[0])
         return price, eps
 
     def owners_earnings_projection(self):
-        price = {}
-        eps = {}
-
-        avg_growth_rate = self.owners_earnings_per_share_growth_rate
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[0], i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i,
-                                                                                  self.stock.price_owners_earnings[0])
-
+        oeps = self.stock.owner_earnings_per_share[0]
+        oeps_growth_rate = self.owners_earnings_per_share_growth_rate
+        pe = self.stock.price_owners_earnings[0]
+        price, eps = self.discount_cash_flow(oeps, oeps_growth_rate, pe)
         return price, eps
 
     def evebitda_projection(self):
-        price = {}
-        eps = {}
-
-        avg_growth_rate = self.ebitda_growth_rate
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.ebitda_per_share[0], i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.ev_ebitda[0])
-
+        ebitda_ps = self.stock.ebitda_per_share[0]
+        ebitda_growth_rate = self.ebitda_growth_rate
+        ev_ebitda = self.stock.ev_ebitda[0]
+        price, eps = self.discount_cash_flow(ebitda_ps, ebitda_growth_rate, ev_ebitda)
         return price, eps
 
     def fcf_projection(self):
-        price = {}
-        eps = {}
-
-        fcfeps = self.stock.free_cash_flow_to_equity_per_share[0]
-        fcfpe = self.stock.market_price / fcfeps
-        avg_growth_rate = self.free_cash_flow_growth_rate
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, fcfpe)
+        fcfe_ps = self.stock.free_cash_flow_to_equity_per_share[0]
+        fcfe_pe = self.stock.price_free_cash_flow[0]
+        fcfe_growth_rate = self.free_cash_flow_growth_rate
+        price, eps = self.discount_cash_flow(fcfe_ps, fcfe_growth_rate, fcfe_pe)
         return price, eps
 
 
