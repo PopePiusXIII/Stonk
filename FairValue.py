@@ -49,7 +49,16 @@ class Estimate:
         return price, eps
 
     def basic_projection(self):
-        price, eps = self.discount_cash_flow(self.stock.eps[0], self.eps_growth_rate, self.stock.pe[0])
+        pe = 0
+        i = 0
+        for date in self.stock.pe_table.iloc[:, 0]:
+            if date == self.stock.finance_report_date:
+                pe = self.stock.pe_table.iloc[i, -1]
+                break
+            i += 1
+        if pe == 0:
+            print("couldnt find a pe with same date as financial sheet . Basic projection")
+        price, eps = self.discount_cash_flow(self.stock.eps[0], self.eps_growth_rate, pe)
         return price, eps
 
     def owners_earnings_projection(self):
