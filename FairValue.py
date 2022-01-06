@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import statistics as stat
-
+import pandas as pd
 
 class Estimate:
     current_year = 2022
@@ -13,9 +13,9 @@ class Estimate:
 
         self.eps_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.eps)
         self.owners_earnings_per_share_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.owner_earnings_per_share)
-        self.ebitda_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.ebitda)
+        self.ebitda_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.ebitda_per_share)
         self.revenue_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.revenue)
-        self.free_cash_flow_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.free_cash_flow_to_equity)
+        self.free_cash_flow_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.free_cash_flow_to_equity_per_share)
         self.net_income_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.net_income)
 
     @staticmethod
@@ -46,7 +46,8 @@ class Estimate:
 
         for i in range(0, self.time_period+1, 1):
             price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, price_to_earnings)
-        return price, eps
+
+        return pd.Series(price), pd.Series(eps).iloc[::-1]
 
     def __find_price_ratio(self, table):
         """
@@ -67,43 +68,44 @@ class Estimate:
     def basic_projection(self):
         pe = self.__find_price_ratio(self.stock.pe_table)
         price, eps = self.discount_cash_flow(self.stock.eps[0], self.eps_growth_rate, pe)
-        return price, eps
+        return pd.Series(price), pd.Series(eps)
 
     def owners_earnings_projection(self):
         oeps = self.stock.owner_earnings_per_share[0]
         oeps_growth_rate = self.owners_earnings_per_share_growth_rate
         pe = self.stock.price_owners_earnings[0]
         price, eps = self.discount_cash_flow(oeps, oeps_growth_rate, pe)
-        return price, eps
+        return pd.Series(price), pd.Series(eps)
 
-    def evebitda_projection(self):
+    def ebitda_projection(self):
         ebitda_ps = self.stock.ebitda_per_share[0]
         ebitda_growth_rate = self.ebitda_growth_rate
         ev_ebitda = self.stock.ev_ebitda[0]
         price, eps = self.discount_cash_flow(ebitda_ps, ebitda_growth_rate, ev_ebitda)
-        return price, eps
+        return pd.Series(price), pd.Series(eps)
 
     def fcf_projection(self):
         fcfe_ps = self.stock.free_cash_flow_to_equity_per_share[0]
         fcfe_pe = self.__find_price_ratio(self.stock.pfcf_table)
         fcfe_growth_rate = self.free_cash_flow_growth_rate
         price, eps = self.discount_cash_flow(fcfe_ps, fcfe_growth_rate, fcfe_pe)
-        return price, eps
+        return pd.Series(price), pd.Series(eps)
 
 
 class Projection:
     def __init__(self):
-        self.eps = {}
-        self.price = {}
+        self.eps = pd.Series({})
+        self.price = pd.Series({})
 
 
 class Analysis(Projection):
-    def __init__(self):
+    def __init__(self, stock):
         super().__init__()
+        self.stock = stock
         self.fcf = Projection()
         self.owners_earnings = Projection()
         self.basic = Projection()
-        self.evebitda = Projection()
+        self.ebitda = Projection()
         self.avg_fair_value = None
         self.price_estimate_upper_limit = []
         self.price_estimate_lower_limit = []
@@ -114,25 +116,10 @@ class Analysis(Projection):
                                zip(self.fcf.price.values(), self.owners_earnings.price.values(),
                                    self.basic.price.values(), self.evebitda.price.values())]
 
-    def fair_value_check(self):
-        # Creates margin of safety upper and lower limit
-        for i in range(self.time_period):
-            mosUL = self.avg_fair_value[i] + (self.avg_fair_value[i] * self.mos)
-            mosLL = self.avg_fair_value[i] - (self.avg_fair_value[i] * self.mos)
-            self.price_estimate_upper_limit.append(mosUL)
-            self.price_estimate_lower_limit.append(mosLL)
-
-        if self.current_price > self.price_estimate_upper_limit[-1]:
-            print("Over Estimated Fair Value")
-        elif self.current_price < self.price_estimate_lower_limit[-1]:
-            print("Under Estimated Fair Value")
-        else:
-            print("Near Estimated Fair Value")
-
     def price_plot(self):
         for i in self.fcf.price.keys():
             plt.scatter(i, self.fcf.price[i], c='black', label='fcf')
-            plt.scatter(i, self.evebitda.price[i], c='blue', label='ev ebitda')
+            plt.scatter(i, self.ebitda.price[i], c='blue', label='ev ebitda')
             plt.scatter(i, self.owners_earnings.price[i], c='green', label='owners earnings')
             plt.scatter(i, self.basic.price[i], c='purple', label='basic')
             # plt.scatter(i, self.avg_fair_value[i], s=50, c='yellow')
