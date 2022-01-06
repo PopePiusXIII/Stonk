@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import statistics as stat
 
 
-# Basic Eval, EV/EBITDA, Owner's Earnings, and Basic FCF class CurrentEstimates:
 class Estimate:
     current_year = 2022
 
@@ -12,86 +11,83 @@ class Estimate:
         self.time_period = time_period
         self.rate_of_return = rate_of_return
 
-        self.eps_growth_rates = Estimate.__growth_rates(self.stock.eps)
-        self.ebitda_growth_rates = Estimate.__growth_rates(self.stock.ebitda)
-        self.revenue_growth_rates = Estimate.__growth_rates(self.stock.revenue)
-        self.net_cash_flow_growth_rates = Estimate.__growth_rates(self.stock.net_cash_flow)
-        self.net_income_growth_rates = Estimate.__growth_rates(self.stock.net_income)
+        self.eps_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.eps)
+        self.owners_earnings_per_share_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.owner_earnings_per_share)
+        self.ebitda_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.ebitda)
+        self.revenue_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.revenue)
+        self.free_cash_flow_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.free_cash_flow_to_equity)
+        self.net_income_growth_rate = Estimate.__compound_annual_growth_rate(self.stock.net_income)
 
     @staticmethod
-    def __growth_rates(series):
-        growth_rate = []
-        val1 = series[0]
-        for i in series[1:]:
-            try:
-                val2 = val1
-                val1 = float(i)
-                growth_rate.append(val2 / val1 - 1)
-            except:
-                print("prob just a header")
-                pass
-        return growth_rate
+    def __compound_annual_growth_rate(series):
+        time_history = len(series)-1
+        rate = (series[1]/series[-1]) ** (1 / time_history) -1
+        return rate
 
-    def __price_growth(self, eps, year, earnings_ratio):
-        return (eps[self.time_period + Estimate.current_year] * earnings_ratio) / ((1 + self.rate_of_return) ** year)
+    def __price_growth(self, eps, year, price_to_earnings_ratio):
+        return (eps[self.time_period + Estimate.current_year] * price_to_earnings_ratio) / ((1 + self.rate_of_return) ** year)
 
-    def __eps_growth(self, eps, year, growth):
+    @staticmethod
+    def __eps_growth(eps, year, growth):
         return eps * ((1 + growth) ** year)
 
-    def basic_projection(self):
+    def discount_cash_flow(self, current_eps, avg_growth_rate, price_to_earnings):
+        """
+        :param current_eps: most recent annual eps (float)
+        :param avg_growth_rate: rate of earnings growth (float) 10% is .1
+        :param price_to_earnings: price to earnings ratio (float)
+        :return:
+        """
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
         for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
+            eps[i+Estimate.current_year] = self.__eps_growth(current_eps, i, avg_growth_rate)
 
         for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.pe[0])
+            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, price_to_earnings)
+        return price, eps
+
+    def __find_price_ratio(self, table):
+        """
+        :param table: data frame from macrotrends either price to fcf or price to earnings
+        :return:
+        """
+        price_ratio = 0
+        i = 0
+        for date in table.iloc[:, 0]:
+            if date == self.stock.finance_report_date:
+                price_ratio = table.iloc[i, -1]
+                return price_ratio
+            i += 1
+        if price_ratio == 0:
+            print("couldnt find a pe with same date as financial sheet . Basic projection")
+        return 0
+
+    def basic_projection(self):
+        pe = self.__find_price_ratio(self.stock.pe_table)
+        price, eps = self.discount_cash_flow(self.stock.eps[0], self.eps_growth_rate, pe)
         return price, eps
 
     def owners_earnings_projection(self):
-        price = {}
-        eps = {}
-
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[-1], i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.price_owners_earnings[0])
-
+        oeps = self.stock.owner_earnings_per_share[0]
+        oeps_growth_rate = self.owners_earnings_per_share_growth_rate
+        pe = self.stock.price_owners_earnings[0]
+        price, eps = self.discount_cash_flow(oeps, oeps_growth_rate, pe)
         return price, eps
 
     def evebitda_projection(self):
-        price = {}
-        eps = {}
-
-        avg_growth_rate = stat.mean(self.eps_growth_rates)
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, self.stock.evebitda[0])
-
+        ebitda_ps = self.stock.ebitda_per_share[0]
+        ebitda_growth_rate = self.ebitda_growth_rate
+        ev_ebitda = self.stock.ev_ebitda[0]
+        price, eps = self.discount_cash_flow(ebitda_ps, ebitda_growth_rate, ev_ebitda)
         return price, eps
 
     def fcf_projection(self):
-        price = {}
-        eps = {}
-
-        # Calculate free cash flow EPS and pe
-        fcfeps = self.stock.net_cash_flow[0] / self.stock.shares_outstanding[0]
-
-        fcfpe = self.stock.market_price / fcfeps
-
-        avg_growth_rate = stat.mean(self.net_cash_flow_growth_rates)
-        # Replace pe with poe and EPS with oeps and run eval
-        for i in range(0, self.time_period+1, 1):
-            eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)
-
-        for i in range(0, self.time_period+1, 1):
-            price[Estimate.current_year+self.time_period-i] = self.__price_growth(eps, i, fcfpe)
+        fcfe_ps = self.stock.free_cash_flow_to_equity_per_share[0]
+        fcfe_pe = self.__find_price_ratio(self.stock.pfcf_table)
+        fcfe_growth_rate = self.free_cash_flow_growth_rate
+        price, eps = self.discount_cash_flow(fcfe_ps, fcfe_growth_rate, fcfe_pe)
         return price, eps
 
 
@@ -135,10 +131,10 @@ class Analysis(Projection):
 
     def price_plot(self):
         for i in self.fcf.price.keys():
-            plt.scatter(i, self.fcf.price[i], c='black')
-            plt.scatter(i, self.evebitda.price[i], c='blue')
-            plt.scatter(i, self.owners_earnings.price[i], c='green')
-            plt.scatter(i, self.basic.price[i], c='purple')
+            plt.scatter(i, self.fcf.price[i], c='black', label='fcf')
+            plt.scatter(i, self.evebitda.price[i], c='blue', label='ev ebitda')
+            plt.scatter(i, self.owners_earnings.price[i], c='green', label='owners earnings')
+            plt.scatter(i, self.basic.price[i], c='purple', label='basic')
             # plt.scatter(i, self.avg_fair_value[i], s=50, c='yellow')
-
+        plt.legend()
         plt.show()
