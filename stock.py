@@ -4,6 +4,8 @@ import MacroTrendScrape as mts
 
 class Stock:
     def __init__(self, ticker, company_name):
+        self.ticker = ticker
+        self.company_name = company_name
         self._yfin_data = yf.Ticker(ticker)
         self.balance_sheet = mts.get_financial_sheet(ticker, company_name, 'balance-sheet')
         self.balance_sheet.replace(r'^\s*$', 0, regex=True, inplace=True)
