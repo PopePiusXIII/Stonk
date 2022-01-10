@@ -1,13 +1,17 @@
-from stock import Stock
+import stock as st
 import FairValue as fv
+import ReportWriter as rw
 
 if __name__ == "__main__":
-    msft = Stock('tsla', 'tesla')
-    x = fv.Estimate(msft, 5, .1)
-    etsyAnalysis = fv.Analysis()
-    etsyAnalysis.owners_earnings.price,  etsyAnalysis.owners_earnings.eps = x.owners_earnings_projection()
-    etsyAnalysis.fcf.price,  etsyAnalysis.fcf.eps = x.fcf_projection()
-    etsyAnalysis.evebitda.price,  etsyAnalysis.evebitda.eps = x.evebitda_projection()
-    etsyAnalysis.basic.price,  etsyAnalysis.basic.eps = x.basic_projection()
+    stock = st.Stock('msft', 'microsoft')
+    fairValue = fv.Estimate(stock, 10, .1)
+    analysis = fv.Analysis(stock)
+    analysis.owners_earnings.price,  analysis.owners_earnings.eps = fairValue.owners_earnings_projection()
+    analysis.fcf.price,  analysis.fcf.eps = fairValue.fcf_projection()
+    analysis.ebitda.price,  analysis.ebitda.eps = fairValue.ebitda_projection()
+    analysis.basic.price,  analysis.basic.eps = fairValue.basic_projection()
 
-    etsyAnalysis.price_plot()
+    report = rw.ReportWriter(analysis)
+    report.create_sheets()
+    analysis.price_plot()
+    print("hi")
