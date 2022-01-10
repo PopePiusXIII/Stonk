@@ -5,13 +5,17 @@ import numpy as np
 import pandas as pd
 import requests
 from pprint import pprint
+from itertools import chain
 
 """
-The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using us-gaap taxonomy in 
-a xml/xbrl format. Because there is a standardized taxonomy, the SEC put together a browser API that spits out data 
+The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
+in a xml/xbrl format. Because there is a standardized taxonomy, the SEC put together a browser API that spits out data 
 using only the company CIK number and the taxonomy code you are interested in. More information can be found here:
 https://www.sec.gov/edgar/sec-api-documentation
 """
+
+# User input ticker
+Ticker = 'tsla'
 
 print(datetime.datetime.now())
 def http_response_codes(response):
@@ -33,100 +37,14 @@ def http_response_codes(response):
     else:
         print('N/A')
 
-#Creates dataframe from list of tickers from SEC site, it is tab delimited
-"""
-now = datetime.datetime.now()
-day = now.weekday()
-current_time = now.strftime("%H:%M:%S")
-time = time.time_ns()
-print(time)
-
-if day < 5 and time(6,0) < current_time < time(17,30):
-    print(0)
-else:
-    print(1)
-"""
 try:
-    TickerListDF = pd.read_csv('C:\\Users\\modyv\\Documents\\GitHub\\Stonk\\ticker.txt', sep='\t',
-                               names=['Ticker', 'CIK'], index_col='Ticker')
-except:
     TickerListDF = pd.read_csv('https://sec.gov/include/ticker.txt', sep='\t', names=['Ticker', 'CIK'],
                                index_col='Ticker')
+except:
+    TickerListDF = pd.read_csv('C:\\Users\\modyv\\Documents\\GitHub\\Stonk\\ticker.txt', sep='\t',
+                               names=['Ticker', 'CIK'], index_col='Ticker')
 
-#User input ticker
-Ticker = 'aapl'
-
-TickerListDFForTest = pd.read_csv('https://sec.gov/include/ticker.txt', sep='\t', names=['Ticker', 'CIK'])
-print(TickerListDFForTest)
-#print(len(TickerListDFForTest.index))
-USGAAPList = []
-IFRSFullList = []
-#
-for i in range(0, len(TickerListDFForTest.index)):
-    # Finds corresponding CIK number for the ticker
-    TickerInfo = TickerListDFForTest.loc[i]
-    CIK = str(TickerInfo['CIK'])
-    CIKLeadingZeros = CIK.zfill(10)
-
-    print('Ticker: ', str(TickerInfo['Ticker']))
-    print('CIK #: ', CIK)
-
-    # EDGAR page for requested ticker
-    CompanyOverviewURL = 'https://data.sec.gov/submissions/CIK' + CIKLeadingZeros + '.json'
-
-    # Spoofs python browser as actual browser
-    requests_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
-
-    # Get the data, do not remove headers
-    response = requests.get(CompanyOverviewURL, headers=requests_headers)
-
-    http_response_codes(response)
-
-    # These are case sensitive
-    #Taxonomy_USGAAP = ['NetIncomeLoss', 'Revenues', 'EarningsPerShareBasic', ]
-
-    url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK' + CIKLeadingZeros + '.json'
-    response = requests.get(url, headers=requests_headers)
-    try:
-        # Output EDGAR data
-        EDGAR_json = response.json()
-        # pprint(EDGAR_json)
-        EDGAR_json = EDGAR_json['facts']['us-gaap']
-        # pprint(EDGAR_json)
-        JSONKEYS = EDGAR_json.keys()
-        List = list(JSONKEYS)
-        USGAAPList += [List]
-    except:
-        None
-    try:
-        # Output EDGAR data
-        EDGAR_json = response.json()
-        # pprint(EDGAR_json)
-        EDGAR_json = EDGAR_json['facts']['ifrs-full']
-        # pprint(EDGAR_json)
-        JSONKEYS = EDGAR_json.keys()
-        List = list(JSONKEYS)
-        IFRSFullList += [List]
-    except:
-        None
-    time.sleep(0)
-
-#pprint(USGAAPList)
-USGAAPArray = np.concatenate([np.array(i) for i in USGAAPList])
-USGAAPUniqueArray = np.unique(USGAAPArray)
-print('USGAAP:', np.shape(USGAAPUniqueArray)[0])
-USGAAPDF = pd.DataFrame(USGAAPUniqueArray)
-USGAAPDF.to_csv(r'C:\Users\modyv\Documents\GitHub\Stonk\UniqueUS-GAAP.csv', index= False)
-
-IFRSFullArray = np.concatenate([np.array(i) for i in IFRSFullList])
-IFRSFullUniqueArray = np.unique(IFRSFullArray)
-print('IFRSFull:', np.shape(IFRSFullUniqueArray)[0])
-IFRSFullDF = pd.DataFrame(IFRSFullUniqueArray)
-IFRSFullDF.to_csv(r'C:\Users\modyv\Documents\GitHub\Stonk\UniqueIFRS-Full.csv', index= False)
-#IFRSFullArray = np.array(IFRSFullList).reshape(len(IFRSFullList), 1)
-"""
-#Finds corresponding CIK number for the ticker
+# Finds corresponding CIK number for the ticker
 TickerInfo = TickerListDF.loc[Ticker]
 CIK = str(TickerInfo['CIK'])
 CIKLeadingZeros = CIK.zfill(10)
@@ -134,59 +52,212 @@ CIKLeadingZeros = CIK.zfill(10)
 print('Ticker: ', Ticker.upper())
 print('CIK #: ', CIK)
 
-#EDGAR page for requested ticker
+# EDGAR page for requested ticker
 CompanyOverviewURL = 'https://data.sec.gov/submissions/CIK' + CIKLeadingZeros + '.json'
 
-#Spoofs python browser as actual browser
+# Spoofs python browser as actual browser
 requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 
-#Get the data, do not remove headers
+# Get the data, do not remove headers
 response = requests.get(CompanyOverviewURL, headers= requests_headers)
 
+# Returns the response code of the site
 http_response_codes(response)
 
-#These are case sensitive
-Taxonomy_USGAAP = ['NetIncomeLoss', 'Revenues', 'EarningsPerShareBasic', ]
-
+# SEC filing api
 url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK' + CIKLeadingZeros + '.json'
 response = requests.get(url, headers= requests_headers)
 
-#Output EDGAR data
-EDGAR_json = response.json()
-#pprint(EDGAR_json)
-EDGAR_json = EDGAR_json['facts']['us-gaap']
-#pprint(EDGAR_json)
-JSONKEYS = EDGAR_json.keys()
-list = list(JSONKEYS)
-pprint(list)
-"""
-"""
-NetIncome = EDGAR_json['NetIncomeLoss']['units']['USD']
-Size = len(NetIncome)
-#pprint(NetIncome)
+# Tries US-GAAP and IFRS-Full taxonomies and makes a list of all the tags in the correct taxonomy
+# American companies *should* be using US-GAAP, international companies *should* be using IFRS-Full
+USGAAPList = []
+IFRSFullList = []
+try:
+    # Output EDGAR data
+    EDGAR_json = response.json()
+    EDGAR_json = EDGAR_json['facts']['us-gaap']
+    JSONKEYS = EDGAR_json.keys()
+    List = list(JSONKEYS)
+    USGAAPList += [List]
+except:
+    # Output EDGAR data
+    EDGAR_json = response.json()
+    EDGAR_json = EDGAR_json['facts']['ifrs-full']
+    JSONKEYS = EDGAR_json.keys()
+    List = list(JSONKEYS)
+    IFRSFullList += [List]
 
-#NetIncome = NetIncome[10]['val']
-#print(NetIncome)
+# Decides what the valid taxonomy is for the given ticker
+if USGAAPList:
+    ValidTaxonomy = USGAAPList
+elif IFRSFullList:
+    ValidTaxonomy = IFRSFullList
+else:
+    print('No valid taxonomy')
+    exit()
 
-NetIncomeFormList = []
-NetIncomeEndDateList = []
-NetIncomeValList = []
+# Values to lookup within the json resutl
+LookUpValue = ['Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax']
+
+# Clean up our Lookup variable for use further on in the code
+LookUp = EDGAR_json[LookUpValue[0]]['units']
+
+# Create a list to see if our LookUpValue exists. Since there are 13k+ companies with files dating back to who knows
+# when it is best to pass multiple lookup values, however, if the look up value doesn't exist then the code kicks back
+# an error. Creating a list called 'LookUpValueExists' allows us to screen the given value before searching
+LookUpValueExists = []
+for i in range(0, len(LookUpValue)):
+    if LookUpValue[i] in ValidTaxonomy[0]:
+        LookUpValueExists += [i+1]
+    else:
+        LookUpValueExists += [0]
+
+# Return the form, the end date, the value, and identify if it is a quarterly or annual result
+AllLookUpForm = []
+AllLookUpEndDate = []
+AllLookUpVals = []
+AllQorKColumn = []
+for i in range(0, len(LookUpValueExists)):
+    if LookUpValueExists[i] > 0:
+        print(LookUpValue[i])
+        LookUp = EDGAR_json[LookUpValue[i]]['units']
+        # Automatically find the next json key
+        Key = list(LookUp.keys())[0]
+        LookUp = LookUp[Key]
+        # Returns how many data points we are pulling for the given LookUpValue
+        LookUpCount = len(LookUp)
+        LookUpFormList = []
+        LookUpEndDateList = []
+        LookUpValList = []
+        QorKColumn = []
+        # Using the for loop below to screen the 'frame' json key. This frame key is used to identify whether the data
+        # returned is quarterly annual within an annual filings. We also populate our dataframe 'Quarterly or Annual'
+        # column using the frame data
+        for j in range(0, LookUpCount):
+            if 'frame' in LookUp[j]:
+                Frame = LookUp[j]['frame']
+                if ('Q' in Frame) or ('q' in Frame):
+                    Form = LookUp[j]['form']
+                    EndDate = LookUp[j]['end']
+                    Val = LookUp[j]['val']
+                    LookUpFormList += [Form]
+                    LookUpEndDateList += [EndDate]
+                    LookUpValList += [Val]
+                    QorKColumn += ['Q']
+                elif ('Q' not in Frame) or ('q' not in Frame):
+                    Form = LookUp[j]['form']
+                    EndDate = LookUp[j]['end']
+                    PreviousVals = []
+                    for k in range(j-3, j-1):
+                        PreviousVals += [LookUp[k]['val']]
+                    PreviousVals = sum(PreviousVals)
+                    Val = LookUp[j]['val']
+                    LookUpFormList += [Form]
+                    LookUpEndDateList += [EndDate]
+                    LookUpValList += [Val]
+                    QorKColumn += ['K']
+        AllLookUpForm += [LookUpFormList]
+        AllLookUpEndDate += [LookUpEndDateList]
+        AllLookUpVals += [LookUpValList]
+        AllQorKColumn += [QorKColumn]
+
+# Compile into a dataframe
+AllLookUpForm = list(chain.from_iterable(AllLookUpForm))
+AllLookUpEndDate = list(chain.from_iterable(AllLookUpEndDate))
+AllLookUpVals = list(chain.from_iterable(AllLookUpVals))
+AllQorKColumn = list(chain.from_iterable(AllQorKColumn))
+
+TotalLookUpCount = len(AllLookUpVals)
+LookUpFormArray = np.array(AllLookUpForm).reshape(TotalLookUpCount, 1)
+LookUpEndDateArray = np.array(AllLookUpEndDate).reshape(TotalLookUpCount, 1)
+LookUpValArray = np.array(AllLookUpVals).reshape(TotalLookUpCount, 1)
+QorKColumnArray = np.array(AllQorKColumn).reshape(TotalLookUpCount, 1)
+LookUpArray = np.concatenate((LookUpFormArray, LookUpEndDateArray, LookUpValArray, QorKColumnArray), axis= 1)
+
+df = pd.DataFrame(LookUpArray, columns= ['Form', 'End Date', LookUpValue[0], '(Q)uarterly or Annual (K)'])
+df.sort_values(by='End Date', inplace=True)
+df.reset_index(drop= True, inplace= True)
+pd.set_option("display.max_rows", None)
+
+# Identify duplicate End Dates
+EndDateList = df.loc[:, 'End Date']
+EndDateList = EndDateList.values
+# Returns the values of only the duplicates
+UniqueEndDates, EndDateCount = np.unique(EndDateList, return_counts= True)
+DuplicateEndDates = UniqueEndDates[EndDateCount > 1]
+
+#Identifies the duplicate end dates index values
+DuplicateDatesIndices = []
+for i in range(0, len(DuplicateEndDates)):
+    Duplicates = df[df['End Date'] == DuplicateEndDates[i]].index.values
+    Duplicates = Duplicates.tolist()
+    DuplicateDatesIndices += Duplicates
+
+#Loops through dataframe to identify entries with identical dates with a Q and K val in the 'Q or K' column
+RowsToDelete = []
+for i in range(0, len(DuplicateDatesIndices)):
+    RepetitiveDatesCheckVal1 = DuplicateDatesIndices[i]
+    for j in range (0, len(DuplicateDatesIndices)):
+        RepetitiveDatesCheckVal2 = DuplicateDatesIndices[j]
+        if i != j:
+            if (df.iloc[RepetitiveDatesCheckVal1, 1] == df.iloc[RepetitiveDatesCheckVal2, 1]) and ((df.iloc[RepetitiveDatesCheckVal1, 3] == 'Q') and (df.iloc[RepetitiveDatesCheckVal2, 3] == 'K')):
+                RowsToDelete += [RepetitiveDatesCheckVal2]
+            elif (df.iloc[RepetitiveDatesCheckVal1, 1] == df.iloc[RepetitiveDatesCheckVal2, 1]) and ((df.iloc[RepetitiveDatesCheckVal1, 3] == 'K') and (df.iloc[RepetitiveDatesCheckVal2, 3] == 'Q')):
+                RowsToDelete += [RepetitiveDatesCheckVal1]
+            elif (df.iloc[RepetitiveDatesCheckVal1, 1] == df.iloc[RepetitiveDatesCheckVal2, 1]) and (('Q' in df.iloc[RepetitiveDatesCheckVal1, 0]) and ('K' in df.iloc[RepetitiveDatesCheckVal2, 0])):
+                RowsToDelete += [RepetitiveDatesCheckVal2]
+            elif (df.iloc[RepetitiveDatesCheckVal1, 1] == df.iloc[RepetitiveDatesCheckVal2, 1]) and (('K' in df.iloc[RepetitiveDatesCheckVal1, 0]) and ('Q' in df.iloc[RepetitiveDatesCheckVal2, 0])):
+                RowsToDelete += [RepetitiveDatesCheckVal1]
+
+#Deletes previously identified rows
+UniqueRowsToDelete = np.unique(RowsToDelete)
+UniqueRowsToDelete = UniqueRowsToDelete.tolist()
+df.drop(RowsToDelete, inplace= True)
+df.reset_index(drop= True, inplace= True)
+
+print(df)
+
+# Note to self: add functionality to subtract previous quarterly results from current result if quarterly results are
+# not reported in an annual result. BAC is the best example of this
+
+
+# Everything below can be considered obsolete since it was created before I figured out there was an SEC api but it may
+# prove to be useful in the future
+"""        
+for i in range(0, len(LookUpValue)):
+        
+
+    LookUpFormList = []
+    LookUpEndDateList = []
+    LookUpValList = []
+    for j in range(0, Size):
+        Form = LookUp[i]['form']
+        EndDate = LookUp[i]['end']
+        Val = LookUp[i]['val']
+        LookUpFormList += [Form]
+        LookUpEndDateList += [EndDate]
+        LookUpValList += [Val]
+        
+
+LookUpFormList = []
+LookUpEndDateList = []
+LookUpValList = []
 for i in range(0, Size):
     #NetIncome = NetIncome[i]
-    Form = NetIncome[i]['form']
-    EndDate = NetIncome[i]['end']
-    Val = NetIncome[i]['val']
-    NetIncomeFormList += [Form]
-    NetIncomeEndDateList += [EndDate]
-    NetIncomeValList += [Val]
+    Form = LookUp[i]['form']
+    EndDate = LookUp[i]['end']
+    Val = LookUp[i]['val']
+    LookUpFormList += [Form]
+    LookUpEndDateList += [EndDate]
+    LookUpValList += [Val]
 
-NetIncomeValArray = np.array(NetIncomeValList).reshape(Size, 1)
-NetIncomeEndDateArray = np.array(NetIncomeEndDateList).reshape(Size, 1)
-NetIncomeFormArray = np.array(NetIncomeFormList).reshape(Size, 1)
+NetIncomeValArray = np.array(LookUpValList).reshape(Size, 1)
+NetIncomeEndDateArray = np.array(LookUpEndDateList).reshape(Size, 1)
+NetIncomeFormArray = np.array(LookUpFormList).reshape(Size, 1)
 NetIncomeArray = np.concatenate((NetIncomeFormArray, NetIncomeEndDateArray, NetIncomeValArray), axis= 1)
-#print(NetIncomeArray)
+print(NetIncomeArray)
 
-df = pd.DataFrame(NetIncomeArray)
+df = pd.DataFrame(NetIncomeArray, columns= ['Form', 'End Date', LookUpValue[0]])
 print(df)
 """
 """
