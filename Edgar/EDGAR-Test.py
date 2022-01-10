@@ -15,7 +15,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 """
 
 # User input ticker
-Ticker = 'tsla'
+Ticker = 'bac'
 
 print(datetime.datetime.now())
 def http_response_codes(response):
@@ -119,7 +119,6 @@ AllLookUpVals = []
 AllQorKColumn = []
 for i in range(0, len(LookUpValueExists)):
     if LookUpValueExists[i] > 0:
-        print(LookUpValue[i])
         LookUp = EDGAR_json[LookUpValue[i]]['units']
         # Automatically find the next json key
         Key = list(LookUp.keys())[0]
@@ -221,7 +220,7 @@ print(df)
 # not reported in an annual result. BAC is the best example of this
 
 
-# Everything below can be considered obsolete since it was created before I figured out there was an SEC api but it may
+# Everything below can be considered obsolete since it was created before I figured out there was an SEC api, but it may
 # prove to be useful in the future
 """        
 for i in range(0, len(LookUpValue)):
