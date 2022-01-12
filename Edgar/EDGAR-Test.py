@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 from pprint import pprint
 from itertools import chain
+import pyEX as p
 
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
@@ -13,6 +14,10 @@ in a xml/xbrl format. Because there is a standardized taxonomy, the SEC put toge
 using only the company CIK number and the taxonomy code you are interested in. More information can be found here:
 https://www.sec.gov/edgar/sec-api-documentation
 """
+
+#IEX Login - personal login, currently free
+c = p.Client(api_token='pk_acd6e54847cd428b8959702163eca5ba', version= 'stable')
+IEXToken = 'pk_acd6e54847cd428b8959702163eca5ba'
 
 # User input ticker
 Ticker = 'bac'
@@ -218,8 +223,8 @@ df.reset_index(drop= True, inplace= True)
 
 # Get dataframe index values of entries with annual result reported
 AnnualValueList = (df[df['(Q)uarterly or Annual (K)'] == 'K']).index.tolist()
-print(AnnualValueList)
 
+# Find the index of the annual values and calculate a fourth quarter value only if there are 3 prior quarterly values
 CalculatedFourthQuarterVal = []
 ValidAnnualValList = []
 for i in range(0, len(AnnualValueList)):
@@ -235,18 +240,21 @@ for i in range(0, len(AnnualValueList)):
             CalculatedFourthQuarterVal += [FourthQuarterVal]
             ValidAnnualValList += [AnnualIndexVal]
 
-print(CalculatedFourthQuarterVal)
-print(ValidAnnualValList)
-
+# Replace the annual value with a calculated fourth quarter value
 if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
     for i in range(0, len(ValidAnnualValList)):
         df.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
-        df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q'
+        df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q - Calculated'
 
-print(df)
+# Pulling in the historic quote - work in progress
+EndDateForQuote = []
+for i in range(0, len(df)):
+    EndDateForQuote = str(datetime.strptime(df.iloc[i, 1], '%Y-%m-%d').date())
+    print(EndDateForQuote.replace('-', ''))
+    IEXURL = 'https://cloud.iexapis.com/stable/stock/bac/chart/date/' + EndDateForQuote + '?token=' + IEXToken
 
-# Note to self: add functionality to subtract previous quarterly results from current result if quarterly results are
-# not reported in an annual result. BAC is the best example of this
+
+# Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
 
 # Everything below can be considered obsolete since it was created before I figured out there was an SEC api, but it may
 # prove to be useful in the future
