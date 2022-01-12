@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import time
 import os
 import numpy as np
@@ -17,7 +17,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 # User input ticker
 Ticker = 'bac'
 
-print(datetime.datetime.now())
+print(datetime.now())
 def http_response_codes(response):
     response_status = str(response.status_code)
     if '200' in response_status:
@@ -172,7 +172,6 @@ LookUpEndDateArray = np.array(AllLookUpEndDate).reshape(TotalLookUpCount, 1)
 LookUpValArray = np.array(AllLookUpVals).reshape(TotalLookUpCount, 1)
 QorKColumnArray = np.array(AllQorKColumn).reshape(TotalLookUpCount, 1)
 LookUpArray = np.concatenate((LookUpFormArray, LookUpEndDateArray, LookUpValArray, QorKColumnArray), axis= 1)
-
 df = pd.DataFrame(LookUpArray, columns= ['Form', 'End Date', LookUpValue[0], '(Q)uarterly or Annual (K)'])
 df.sort_values(by='End Date', inplace=True)
 df.reset_index(drop= True, inplace= True)
@@ -185,14 +184,14 @@ EndDateList = EndDateList.values
 UniqueEndDates, EndDateCount = np.unique(EndDateList, return_counts= True)
 DuplicateEndDates = UniqueEndDates[EndDateCount > 1]
 
-#Identifies the duplicate end dates index values
+# Identifies the duplicate end dates index values
 DuplicateDatesIndices = []
 for i in range(0, len(DuplicateEndDates)):
     Duplicates = df[df['End Date'] == DuplicateEndDates[i]].index.values
     Duplicates = Duplicates.tolist()
     DuplicateDatesIndices += Duplicates
 
-#Loops through dataframe to identify entries with identical dates with a Q and K val in the 'Q or K' column
+# Loops through dataframe to identify entries with identical dates with a Q and K val in the 'Q or K' column
 RowsToDelete = []
 for i in range(0, len(DuplicateDatesIndices)):
     RepetitiveDatesCheckVal1 = DuplicateDatesIndices[i]
@@ -208,17 +207,46 @@ for i in range(0, len(DuplicateDatesIndices)):
             elif (df.iloc[RepetitiveDatesCheckVal1, 1] == df.iloc[RepetitiveDatesCheckVal2, 1]) and (('K' in df.iloc[RepetitiveDatesCheckVal1, 0]) and ('Q' in df.iloc[RepetitiveDatesCheckVal2, 0])):
                 RowsToDelete += [RepetitiveDatesCheckVal1]
 
-#Deletes previously identified rows
+# Deletes previously identified rows
 UniqueRowsToDelete = np.unique(RowsToDelete)
 UniqueRowsToDelete = UniqueRowsToDelete.tolist()
 df.drop(RowsToDelete, inplace= True)
+
+# Remove duplicate rows if they've managed to pass through and reset the dataframe index
+df.drop_duplicates(inplace = True)
 df.reset_index(drop= True, inplace= True)
+
+# Get dataframe index values of entries with annual result reported
+AnnualValueList = (df[df['(Q)uarterly or Annual (K)'] == 'K']).index.tolist()
+print(AnnualValueList)
+
+CalculatedFourthQuarterVal = []
+ValidAnnualValList = []
+for i in range(0, len(AnnualValueList)):
+    if AnnualValueList[i] > 2:
+        AnnualIndexVal = AnnualValueList[i]
+        AnnualVal = int(df.iloc[AnnualIndexVal, 2])
+        FirstThreeQuartersList = []
+        for j in range(1, 4):
+            if datetime.strptime(df.iloc[AnnualIndexVal, 1], '%Y-%m-%d') - datetime.strptime(df.iloc[AnnualIndexVal-j, 1], '%Y-%m-%d') < timedelta(days= 365):
+                FirstThreeQuartersList += [int(df.iloc[AnnualIndexVal-j, 2])]
+        if len(FirstThreeQuartersList) > 2:
+            FourthQuarterVal = AnnualVal - sum(FirstThreeQuartersList)
+            CalculatedFourthQuarterVal += [FourthQuarterVal]
+            ValidAnnualValList += [AnnualIndexVal]
+
+print(CalculatedFourthQuarterVal)
+print(ValidAnnualValList)
+
+if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
+    for i in range(0, len(ValidAnnualValList)):
+        df.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
+        df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q'
 
 print(df)
 
 # Note to self: add functionality to subtract previous quarterly results from current result if quarterly results are
 # not reported in an annual result. BAC is the best example of this
-
 
 # Everything below can be considered obsolete since it was created before I figured out there was an SEC api, but it may
 # prove to be useful in the future
