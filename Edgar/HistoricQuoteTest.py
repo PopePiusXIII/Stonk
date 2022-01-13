@@ -29,7 +29,7 @@ IEXStart = time.process_time()
 response = requests.get(IEXSandboxUrl, headers = requests_headers)
 data = response.json()
 IEXStop = time.process_time()
-print(data)
+print(data[0]['close'])
 print(IEXStop - IEXStart)
 
 # Yahoo finance is free but has been broken in the past and we are at the mercy of yahoo since the package is

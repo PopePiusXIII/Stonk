@@ -6,7 +6,6 @@ import pandas as pd
 import requests
 from pprint import pprint
 from itertools import chain
-import pyEX as p
 
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
@@ -14,10 +13,6 @@ in a xml/xbrl format. Because there is a standardized taxonomy, the SEC put toge
 using only the company CIK number and the taxonomy code you are interested in. More information can be found here:
 https://www.sec.gov/edgar/sec-api-documentation
 """
-
-#IEX Login - personal login, currently free
-c = p.Client(api_token='pk_acd6e54847cd428b8959702163eca5ba', version= 'stable')
-IEXToken = 'pk_acd6e54847cd428b8959702163eca5ba'
 
 # User input ticker
 Ticker = 'bac'
@@ -48,6 +43,14 @@ try:
 except:
     TickerListDF = pd.read_csv('C:\\Users\\modyv\\Documents\\GitHub\\Stonk\\ticker.txt', sep='\t',
                                names=['Ticker', 'CIK'], index_col='Ticker')
+
+IEXTestToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
+IEXRealToken = 'pk_acd6e54847cd428b8959702163eca5ba'
+
+def historic_quote(EndDateStripped, Ticker, IEXRealToken, IEXTestToken):
+    BaseCloudUrl = 'https://cloud.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXRealToken
+    BaseSandboxURL = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
+
 
 # Finds corresponding CIK number for the ticker
 TickerInfo = TickerListDF.loc[Ticker]
@@ -250,8 +253,8 @@ if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
 EndDateForQuote = []
 for i in range(0, len(df)):
     EndDateForQuote = str(datetime.strptime(df.iloc[i, 1], '%Y-%m-%d').date())
-    print(EndDateForQuote.replace('-', ''))
-    IEXURL = 'https://cloud.iexapis.com/stable/stock/bac/chart/date/' + EndDateForQuote + '?token=' + IEXToken
+    EndDateStripped = EndDateForQuote.replace('-', '')
+    BaseSandboxURL = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
 
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
