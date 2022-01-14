@@ -10,7 +10,7 @@ Ticker = 'bac'
 requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 IEXTestToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
 IEXRealToken = 'pk_acd6e54847cd428b8959702163eca5ba'
-Date = '2017-06-30'
+Date = '2017-12-25'
 DateStripped = Date.replace('-', '')
 
 # CLOUD URL WILL CHARGE CREDITS TO ACCOUNT AND RETURN ACCURATE DATA - FOR FUNCTIONAL USE
@@ -29,7 +29,9 @@ IEXStart = time.process_time()
 response = requests.get(IEXSandboxUrl, headers = requests_headers)
 data = response.json()
 IEXStop = time.process_time()
-print(data[0]['close'])
+print(data)
+if len(data) == 0:
+    print(1)
 print(IEXStop - IEXStart)
 
 # Yahoo finance is free but has been broken in the past and we are at the mercy of yahoo since the package is
