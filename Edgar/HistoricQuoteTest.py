@@ -6,19 +6,19 @@ from datetime import datetime, timedelta
 from pprint import pprint
 import time
 
-Ticker = 'aapl'
+Ticker = 'bac'
 requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 IEXTestToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
 IEXRealToken = 'pk_acd6e54847cd428b8959702163eca5ba'
-Date = '2021-12-10'
+Date = '2017-06-30'
 DateStripped = Date.replace('-', '')
 
 # CLOUD URL WILL CHARGE CREDITS TO ACCOUNT AND RETURN ACCURATE DATA - FOR FUNCTIONAL USE
 IEXCloudUrl = 'https://cloud.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + DateStripped + '?chartByDay=true&token=' + IEXRealToken
 
 # SANDBOX URL IS FREE TO USE, HOWEVER, THE RETURNED DATA IS GARBLED - FOR TESTING ONLY
-IEXSandboxUrl = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + DateStripped + '?chartCloseOnly=true&token=' + IEXTestToken
-
+IEXSandboxUrl = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + DateStripped + '?chartByDay=true&token=' + IEXTestToken
+print(IEXSandboxUrl)
 
 #c = p.Client(api_token=IEXTestToken, version= 'sandbox')
 

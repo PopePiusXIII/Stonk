@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import time
 import os
 import numpy as np
@@ -250,12 +250,23 @@ if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
         df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q - Calculated'
 
 # Pulling in the historic quote - work in progress
-EndDateForQuote = []
+HistoricQuoteEndDateList = []
+HistoricQuoteList = []
 for i in range(0, len(df)):
-    EndDateForQuote = str(datetime.strptime(df.iloc[i, 1], '%Y-%m-%d').date())
-    EndDateStripped = EndDateForQuote.replace('-', '')
-    BaseSandboxURL = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
+    EndDateForQuote = datetime.strptime(df.iloc[i, 1], '%Y-%m-%d').date()
+    Today = date.today()
+    if Today - EndDateForQuote < timedelta(days= ((365*5)+1)):
+        print(EndDateForQuote)
+        print(i)
+        EndDateStripped = str(EndDateForQuote).replace('-', '')
+        IEXSandboxUrl = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
+        IEXResponse = requests.get(IEXSandboxUrl, headers=requests_headers)
+        HistoricQuote = IEXResponse.json()[0]['close']
+        HistoricQuoteEndDateList += [EndDateForQuote]
+        HistoricQuoteList += [HistoricQuote]
 
+print(HistoricQuoteEndDateList)
+print(HistoricQuoteList)
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
 
