@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 from pprint import pprint
 from itertools import chain
+from bs4 import BeautifulSoup as bs
 
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
@@ -18,6 +19,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 Ticker = 'bac'
 
 print(datetime.now())
+
 def http_response_codes(response):
     response_status = str(response.status_code)
     if '200' in response_status:
@@ -32,6 +34,8 @@ def http_response_codes(response):
         print('Website Response = 403: Forbidden')
     elif '404' in response_status:
         print('Website Response = 404: Cannot access requested site')
+    elif '429' in response_status:
+        print('Website Response = 429: Too many requests (rate limited)')
     elif '503' in response_status:
         print('Website Response = 503: Server is not ready to handle request')
     else:
@@ -41,16 +45,21 @@ try:
     TickerListDF = pd.read_csv('https://sec.gov/include/ticker.txt', sep='\t', names=['Ticker', 'CIK'],
                                index_col='Ticker')
 except:
-    TickerListDF = pd.read_csv('C:\\Users\\modyv\\Documents\\GitHub\\Stonk\\ticker.txt', sep='\t',
+    TickerListDF = pd.read_csv(r'C:/Users/modyv//Documents/GitHub/Stonk/ticker.txt', sep='\t',
                                names=['Ticker', 'CIK'], index_col='Ticker')
+# IEX Cloud Inputs:
+CloudOrSandbox = 'Sandbox' # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
+YearsBack = 5 # <-- On the free tier for now, 15 years when on paid tier
 
-IEXTestToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
-IEXRealToken = 'pk_acd6e54847cd428b8959702163eca5ba'
-
-def historic_quote(EndDateStripped, Ticker, IEXRealToken, IEXTestToken):
-    BaseCloudUrl = 'https://cloud.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXRealToken
-    BaseSandboxURL = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
-
+if ('Cloud' in CloudOrSandbox) or ('cloud' in CloudOrSandbox):
+    BaseUrlIEX = 'https://cloud.iexapis.com/stable/stock/'
+    IEXToken = 'pk_acd6e54847cd428b8959702163eca5ba'
+elif ('Sandbox' in CloudOrSandbox) or ('sandbox' in CloudOrSandbox):
+    BaseUrlIEX = 'https://sandbox.iexapis.com/stable/stock/'
+    IEXToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
+else:
+    print('Input valid mode for IEX')
+    exit()
 
 # Finds corresponding CIK number for the ticker
 TickerInfo = TickerListDF.loc[Ticker]
@@ -249,24 +258,86 @@ if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
         df.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
         df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q - Calculated'
 
-# Pulling in the historic quote - work in progress
-HistoricQuoteEndDateList = []
-HistoricQuoteList = []
+# Determine if filing end date falls on a weekend or holiday then finds the closest day prior to that for valid quote
+ValidEndDateList = []
 for i in range(0, len(df)):
     EndDateForQuote = datetime.strptime(df.iloc[i, 1], '%Y-%m-%d').date()
     Today = date.today()
-    if Today - EndDateForQuote < timedelta(days= ((365*5)+1)):
-        print(EndDateForQuote)
-        print(i)
-        EndDateStripped = str(EndDateForQuote).replace('-', '')
-        IEXSandboxUrl = 'https://sandbox.iexapis.com/stable/stock/' + Ticker + '/chart/date/' + EndDateStripped + '?chartByDay=true&token=' + IEXTestToken
-        IEXResponse = requests.get(IEXSandboxUrl, headers=requests_headers)
-        HistoricQuote = IEXResponse.json()[0]['close']
-        HistoricQuoteEndDateList += [EndDateForQuote]
-        HistoricQuoteList += [HistoricQuote]
+    if Today - EndDateForQuote < timedelta(days=((365 * 5) + 1)):
+        DayValue = EndDateForQuote.weekday()
+        MarketHolidaysURL = 'http://www.market-holidays.com/' + str(EndDateForQuote.year)
+        MarketHolidayResponse = requests.get(MarketHolidaysURL)
+        data = MarketHolidayResponse.text
+        soup = bs(data, 'html.parser')
+        # If end date falls on weekday, check if the day is a holiday. If it does not, put the end date in a list. If it
+        # does, keep subtracting one day until it is not on a holiday or weekend
+        if DayValue < 5:
+            HolidayList = []
+            for td in soup.find_all('td'):
+                Holiday = td.get_text()
+                # This if statement pulls holiday dates
+                if str(EndDateForQuote.year) in Holiday:
+                    Holiday = datetime.strptime(Holiday, '%B %d, %Y')
+                    Holiday = str(Holiday.date())
+                    HolidayList += [Holiday]
+            if str(EndDateForQuote) not in HolidayList:
+                ValidEndDateList += [str(EndDateForQuote)]
+            else:
+                ValidDate = 0
+                DayDelta = 1
+                while ValidDate == 0:
+                    EndDateForQuote = EndDateForQuote - timedelta(days=DayDelta)
+                    DayValue = EndDateForQuote.weekday()
+                    if DayValue < 5:
+                        HolidayList = []
+                        for td in soup.find_all('td'):
+                            Holiday = td.get_text()
+                            # This if statement pulls holiday dates
+                            if str(EndDateForQuote.year) in Holiday:
+                                Holiday = datetime.strptime(Holiday, '%B %d, %Y')
+                                Holiday = str(Holiday.date())
+                                HolidayList += [Holiday]
+                        if str(EndDateForQuote) not in HolidayList:
+                            ValidEndDateList += [str(EndDateForQuote)]
+                            ValidDate = 1
+                    DayDelta = DayDelta + 1
+        # If end date falls on weekend, keep subtracting one day until it is not on a holiday or weekend
+        else:
+            ValidDate = 0
+            DayDelta = DayValue - 4
+            while ValidDate == 0:
+                EndDateForQuote = EndDateForQuote - timedelta(days=DayDelta)
+                HolidayList = []
+                for td in soup.find_all('td'):
+                    Holiday = td.get_text()
+                    # This if statement pulls holiday dates
+                    if str(EndDateForQuote.year) in Holiday:
+                        Holiday = datetime.strptime(Holiday, '%B %d, %Y')
+                        Holiday = str(Holiday.date())
+                        HolidayList += [Holiday]
+                if str(EndDateForQuote) not in HolidayList:
+                    ValidEndDateList += [str(EndDateForQuote)]
+                    ValidDate = 1
+                DayDelta = DayDelta + 1
 
-print(HistoricQuoteEndDateList)
+HistoricQuoteEndDateList = []
+HistoricQuoteList = []
+for i in range(0, len(ValidEndDateList)):
+    ValidEndDate = datetime.strptime(ValidEndDateList[i], '%Y-%m-%d')
+    ValidEndDateStripped = str(ValidEndDateList[i]).replace('-', '')
+    IEXUrl = BaseUrlIEX + Ticker + '/chart/date/' + ValidEndDateStripped + '?chartByDay=true&token=' + IEXToken
+    # I've run into issues with rate limiting, the while loop below forces our api calls to go through
+    StatusCode = 0
+    while StatusCode != 200:
+        IEXResponse = requests.get(IEXUrl, headers=requests_headers)
+        StatusCode = IEXResponse.status_code
+        if StatusCode == 200:
+            HistoricQuote = IEXResponse.json()[0]['close']
+            HistoricQuoteEndDateList += [str(ValidEndDate.date())]
+            HistoricQuoteList += [HistoricQuote]
+
 print(HistoricQuoteList)
+print(HistoricQuoteEndDateList)
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
 
