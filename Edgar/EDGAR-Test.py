@@ -7,7 +7,10 @@ import requests
 from pprint import pprint
 from itertools import chain
 from bs4 import BeautifulSoup as bs
+from Functions import *
 
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
 in a xml/xbrl format. Because there is a standardized taxonomy, the SEC put together a browser API that spits out data 
@@ -16,41 +19,28 @@ https://www.sec.gov/edgar/sec-api-documentation
 """
 
 # User input ticker
-Ticker = 'bac'
+Ticker = 'tsla'
 
+# IEX Cloud Inputs:
+CloudOrSandbox = 'Sandbox' # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
+YearsBack = 5 # <-- On the free tier for now, 15 years when on paid tier
+
+# Print current date and time, and calculate now minus 5 years + 1 day
 print(datetime.now())
+DeltaDate = datetime.now().date() - timedelta(days = ((365*YearsBack)+1))
 
-def http_response_codes(response):
-    response_status = str(response.status_code)
-    if '200' in response_status:
-        print('Website Response = 200: Connected successfully')
-    elif '301' in response_status:
-        print('Website Response = 301: Redirected to a different endpoint')
-    elif '400' in response_status:
-        print('Website Response = 400: Bad request, try again')
-    elif '401' in response_status:
-        print('Website Response = 401: Login required')
-    elif '403' in response_status:
-        print('Website Response = 403: Forbidden')
-    elif '404' in response_status:
-        print('Website Response = 404: Cannot access requested site')
-    elif '429' in response_status:
-        print('Website Response = 429: Too many requests (rate limited)')
-    elif '503' in response_status:
-        print('Website Response = 503: Server is not ready to handle request')
-    else:
-        print('N/A')
+#ISO 8601 date format
+ISO8601 = '%Y-%m-%d'
 
+# Try statement to pull ticker list, tries for sec site but if it's down pulls locally
 try:
     TickerListDF = pd.read_csv('https://sec.gov/include/ticker.txt', sep='\t', names=['Ticker', 'CIK'],
                                index_col='Ticker')
 except:
     TickerListDF = pd.read_csv(r'C:/Users/modyv//Documents/GitHub/Stonk/ticker.txt', sep='\t',
                                names=['Ticker', 'CIK'], index_col='Ticker')
-# IEX Cloud Inputs:
-CloudOrSandbox = 'Sandbox' # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
-YearsBack = 5 # <-- On the free tier for now, 15 years when on paid tier
 
+# Selects the appropriate response based off IEX version requested
 if ('Cloud' in CloudOrSandbox) or ('cloud' in CloudOrSandbox):
     BaseUrlIEX = 'https://cloud.iexapis.com/stable/stock/'
     IEXToken = 'pk_acd6e54847cd428b8959702163eca5ba'
@@ -72,10 +62,10 @@ print('CIK #: ', CIK)
 # EDGAR page for requested ticker
 CompanyOverviewURL = 'https://data.sec.gov/submissions/CIK' + CIKLeadingZeros + '.json'
 
-# Spoofs python browser as actual browser
+# Spoofs as real browser
 requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 
-# Get the data, do not remove headers
+# Get the data, do not remove headers parameter
 response = requests.get(CompanyOverviewURL, headers= requests_headers)
 
 # Returns the response code of the site
@@ -113,14 +103,14 @@ else:
     print('No valid taxonomy')
     exit()
 
-# Values to lookup within the json resutl
+# Values to lookup within the json result
 LookUpValue = ['Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax']
 
 # Clean up our Lookup variable for use further on in the code
 LookUp = EDGAR_json[LookUpValue[0]]['units']
 
 # Create a list to see if our LookUpValue exists. Since there are 13k+ companies with files dating back to who knows
-# when it is best to pass multiple lookup values, however, if the look up value doesn't exist then the code kicks back
+# when it is best to pass multiple lookup values, however, if the lookup value doesn't exist then the code kicks back
 # an error. Creating a list called 'LookUpValueExists' allows us to screen the given value before searching
 LookUpValueExists = []
 for i in range(0, len(LookUpValue)):
@@ -152,32 +142,25 @@ for i in range(0, len(LookUpValueExists)):
         for j in range(0, LookUpCount):
             if 'frame' in LookUp[j]:
                 Frame = LookUp[j]['frame']
-                if ('Q' in Frame) or ('q' in Frame):
-                    Form = LookUp[j]['form']
-                    EndDate = LookUp[j]['end']
-                    Val = LookUp[j]['val']
-                    LookUpFormList += [Form]
-                    LookUpEndDateList += [EndDate]
-                    LookUpValList += [Val]
+                Form = LookUp[j]['form']
+                EndDate = LookUp[j]['end']
+                Val = LookUp[j]['val']
+                if (('Q' in Frame) or ('q' in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                     QorKColumn += ['Q']
-                elif ('Q' not in Frame) or ('q' not in Frame):
-                    Form = LookUp[j]['form']
-                    EndDate = LookUp[j]['end']
-                    PreviousVals = []
-                    for k in range(j-3, j-1):
-                        PreviousVals += [LookUp[k]['val']]
-                    PreviousVals = sum(PreviousVals)
-                    Val = LookUp[j]['val']
                     LookUpFormList += [Form]
                     LookUpEndDateList += [EndDate]
                     LookUpValList += [Val]
+                elif (('Q' not in Frame) or ('q' not in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                     QorKColumn += ['K']
+                    LookUpFormList += [Form]
+                    LookUpEndDateList += [EndDate]
+                    LookUpValList += [Val]
         AllLookUpForm += [LookUpFormList]
         AllLookUpEndDate += [LookUpEndDateList]
         AllLookUpVals += [LookUpValList]
         AllQorKColumn += [QorKColumn]
 
-# Compile into a dataframe
+# Compile output into numpy array prior to dataframe creation
 AllLookUpForm = list(chain.from_iterable(AllLookUpForm))
 AllLookUpEndDate = list(chain.from_iterable(AllLookUpEndDate))
 AllLookUpVals = list(chain.from_iterable(AllLookUpVals))
@@ -189,10 +172,9 @@ LookUpEndDateArray = np.array(AllLookUpEndDate).reshape(TotalLookUpCount, 1)
 LookUpValArray = np.array(AllLookUpVals).reshape(TotalLookUpCount, 1)
 QorKColumnArray = np.array(AllQorKColumn).reshape(TotalLookUpCount, 1)
 LookUpArray = np.concatenate((LookUpFormArray, LookUpEndDateArray, LookUpValArray, QorKColumnArray), axis= 1)
-df = pd.DataFrame(LookUpArray, columns= ['Form', 'End Date', LookUpValue[0], '(Q)uarterly or Annual (K)'])
+df = pd.DataFrame(LookUpArray, columns= ['Form', 'End Date', LookUpValue[0], 'Q or K'])
 df.sort_values(by='End Date', inplace=True)
 df.reset_index(drop= True, inplace= True)
-pd.set_option("display.max_rows", None)
 
 # Identify duplicate End Dates
 EndDateList = df.loc[:, 'End Date']
@@ -234,7 +216,7 @@ df.drop_duplicates(inplace = True)
 df.reset_index(drop= True, inplace= True)
 
 # Get dataframe index values of entries with annual result reported
-AnnualValueList = (df[df['(Q)uarterly or Annual (K)'] == 'K']).index.tolist()
+AnnualValueList = (df[df['Q or K'] == 'K']).index.tolist()
 
 # Find the index of the annual values and calculate a fourth quarter value only if there are 3 prior quarterly values
 CalculatedFourthQuarterVal = []
@@ -256,7 +238,7 @@ for i in range(0, len(AnnualValueList)):
 if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
     for i in range(0, len(ValidAnnualValList)):
         df.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
-        df.at[ValidAnnualValList[i], '(Q)uarterly or Annual (K)'] = 'Q - Calculated'
+        df.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
 
 # Determine if filing end date falls on a weekend or holiday then finds the closest day prior to that for valid quote
 ValidEndDateList = []
@@ -336,8 +318,15 @@ for i in range(0, len(ValidEndDateList)):
             HistoricQuoteEndDateList += [str(ValidEndDate.date())]
             HistoricQuoteList += [HistoricQuote]
 
-print(HistoricQuoteList)
-print(HistoricQuoteEndDateList)
+if len(HistoricQuoteList) == len(HistoricQuoteEndDateList) == len(df):
+    df2 = pd.DataFrame(HistoricQuoteList, HistoricQuoteEndDateList)
+    df2.reset_index(level=0, inplace=True)
+    df2.rename(columns={df2.columns[0]: 'Quote Date', df2.columns[1]: 'Historic Quote'}, inplace=True)
+    ConcatDataFrame = pd.concat([df, df2], axis=1)
+    print(ConcatDataFrame)
+else:
+    print('Number of datapoints do not match')
+    exit()
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
 
