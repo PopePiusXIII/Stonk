@@ -17,7 +17,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 """
 StartTimer1 = time.perf_counter()
 # User input ticker
-Ticker = 'aapl'
+Ticker = 'atvi'
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
@@ -321,7 +321,6 @@ for i in range(0, len(FilingResultsDF)):
                     ValidEndDateList += [str(EndDateForQuote)]
                     ValidDate = 1
                 DayDelta = DayDelta + 1
-
 StopTimer5 = time.perf_counter()
 print('Find Valid Market Date Timer:', (StopTimer5-StartTimer5), 'sec')
 
@@ -342,7 +341,6 @@ for i in range(0, len(ValidEndDateList)):
             HistoricQuote = IEXResponse.json()[0]['close']
             HistoricQuoteDateList += [str(ValidEndDate.date())]
             HistoricQuoteList += [HistoricQuote]
-
 StopTimer6 = time.perf_counter()
 print('Historic Quote Timer:', (StopTimer6-StartTimer6), 'sec')
 
@@ -357,7 +355,6 @@ if len(HistoricQuoteList) == len(HistoricQuoteDateList) == len(FilingResultsDF):
 else:
     print('Number of datapoints do not match')
     exit()
-
 StopTimer7 = time.perf_counter()
 print('Merge Dataframe Timer:', (StopTimer7-StartTimer7), 'sec')
 
