@@ -351,7 +351,7 @@ if len(HistoricQuoteList) == len(HistoricQuoteDateList) == len(FilingResultsDF):
     HistoricQuoteDataframe.reset_index(level=0, inplace=True)
     HistoricQuoteDataframe.rename(columns={HistoricQuoteDataframe.columns[0]: 'Quote Date', HistoricQuoteDataframe.columns[1]: 'Historic Quote'}, inplace=True)
     ConcatDataFrame = pd.concat([FilingResultsDF, HistoricQuoteDataframe], axis=1)
-    #print(ConcatDataFrame)
+    print(ConcatDataFrame)
 else:
     print('Number of datapoints do not match')
     exit()
