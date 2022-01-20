@@ -207,7 +207,8 @@ FilingResultsDF = pd.DataFrame(FilingResultsArray, columns=['Form', 'End Date', 
 FilingResultsDF.sort_values(by=['End Date', 'Q or K'], inplace=True)
 FilingResultsDF.reset_index(drop=True, inplace=True)
 
-# Goes through FilingResultsDF and checks to see if multiple hits for same date, keeps the superior value
+# Goes through FilingResultsDF and checks to see if multiple data points for the same date and the same 'Q or K' value.
+# The inferior value (based off the LookUpVal list order) is deleted
 InferiorLookupValIndex = []
 for i in range(0, (len(FilingResultsDF)-1)):
     if ((FilingResultsDF.iloc[i+1, 4] > FilingResultsDF.iloc[i, 4]) and
