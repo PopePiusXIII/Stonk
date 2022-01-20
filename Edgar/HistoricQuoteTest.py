@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from pprint import pprint
 import time
 
-Ticker = 'bac'
+Ticker = 'wmt'
 requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 IEXTestToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
 IEXRealToken = 'pk_acd6e54847cd428b8959702163eca5ba'
@@ -27,6 +27,7 @@ print(IEXSandboxUrl)
 # ticker searches. In free tier data only goes back 5 years. Slightly faster than the yf.download method
 IEXStart = time.perf_counter()
 response = requests.get(IEXSandboxUrl, headers = requests_headers)
+print(response.status_code)
 data = response.json()
 IEXStop = time.perf_counter()
 print(data)

@@ -15,19 +15,27 @@ in a xml/xbrl format. Because there is a standardized taxonomy, the SEC put toge
 using only the company CIK number and the taxonomy code you are interested in. More information can be found here:
 https://www.sec.gov/edgar/sec-api-documentation
 """
+
 StartTimer1 = time.perf_counter()
+
 # User input ticker
-Ticker = 'atvi'
+Ticker = 'jpm'  # check what's going on with: sofi, qs, rklb
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
-LookUpValue = ['Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax']
+# THE ORDER OF THIS LIST MATTERS, SORT FROM MOST IMPORTANT TO LEAST IMPORTANT
+LookUpValue = ['Revenues',
+               'RevenuesNetOfInterestExpense',
+               'SalesRevenueNet',
+               'RevenueFromContractWithCustomerExcludingAssessedTax']
+
+# 'Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax'
 
 # IEX Cloud Inputs:
-CloudOrSandbox = 'Sandbox' # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
-YearsBack = 5 # <-- On the free tier for now, 15 years when on paid tier
+CloudOrSandbox = 'Sandbox'  # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
+YearsBack = 5  # <-- On the free tier for now, 15 years when on paid tier
 
-#ISO 8601 date format
+# ISO 8601 date format
 ISO8601 = '%Y-%m-%d'
 
 # Show all rows and columns for dataframe
@@ -36,7 +44,7 @@ pd.set_option('display.max_rows', None)
 
 # Print current date and time, and calculate now minus 5 years + 1 day
 print(datetime.now())
-DeltaDate = datetime.now().date() - timedelta(days = ((365*YearsBack)+1))
+DeltaDate = datetime.now().date() - timedelta(days=((365*YearsBack)+1))
 
 # Try statement to pull ticker list, tries for sec site but if it's down pulls locally
 try:
@@ -58,11 +66,11 @@ else:
     exit()
 
 StopTimer1 = time.perf_counter()
-print('User Inputs Timer:', StopTimer1 - StartTimer1)
 
 StartTimer2 = time.perf_counter()
+
 # Finds corresponding CIK number for the ticker
-TickerInfo = TickerListDF.loc[Ticker]
+TickerInfo = TickerListDF.loc[Ticker.lower()]
 CIK = str(TickerInfo['CIK'])
 CIKLeadingZeros = CIK.zfill(10)
 
@@ -77,14 +85,14 @@ response = requests.get(CompanyOverviewURL, headers= requests_headers)
 """
 
 # Spoofs as real browser
-requests_headers = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
+requests_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
 
 # SEC filing api
 url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK' + CIKLeadingZeros + '.json'
 response = requests.get(url, headers= requests_headers)
 
 # Returns the response code of the site
-http_response_codes(response)
+general_http_response_codes(response)
 
 # Tries US-GAAP and IFRS-Full taxonomies and makes a list of all the tags in the correct taxonomy
 # American companies *should* be using US-GAAP, international companies *should* be using IFRS-Full
@@ -114,30 +122,28 @@ else:
     print('No valid taxonomy')
     exit()
 
-# Clean up our Lookup variable for use further on in the code
-LookUp = EDGAR_json[LookUpValue[0]]['units']
-
 StopTimer2 = time.perf_counter()
-print('Initial EDGAR Initial Data Timer:', StopTimer2 - StartTimer2)
 
 StartTimer3 = time.perf_counter()
+
 # Create a list to see if our LookUpValue exists. Since there are 13k+ companies with files dating back to who knows
 # when it is best to pass multiple lookup values, however, if the lookup value doesn't exist then the code kicks back
 # an error. Creating a list called 'LookUpValueExists' allows us to screen the given value before searching
 LookUpValueExists = []
 for i in range(0, len(LookUpValue)):
     if LookUpValue[i] in ValidTaxonomy[0]:
-        LookUpValueExists += [i+1]
+        LookUpValueExists += [i]
     else:
-        LookUpValueExists += [0]
+        LookUpValueExists += [-1]
 
 # Return the form, the end date, the value, and identify if it is a quarterly or annual result
 FormResults = []
 EndDateResults = []
 ValResults = []
 QorKResults = []
+ValLookedUpResults = []
 for i in range(0, len(LookUpValueExists)):
-    if LookUpValueExists[i] > 0:
+    if LookUpValueExists[i] >= 0:
         LookUp = EDGAR_json[LookUpValue[i]]['units']
         # Automatically find the next json key
         Key = list(LookUp.keys())[0]
@@ -148,6 +154,7 @@ for i in range(0, len(LookUpValueExists)):
         LookUpEndDateList = []
         LookUpValList = []
         QorKColumn = []
+        ValLookedUpList = []
         # Using the for loop below to screen the 'frame' json key. This frame key is used to identify whether the data
         # returned is quarterly annual within an annual filings. We also populate our dataframe 'Quarterly or Annual'
         # column using the frame data
@@ -157,46 +164,73 @@ for i in range(0, len(LookUpValueExists)):
                 Form = LookUp[j]['form']
                 EndDate = LookUp[j]['end']
                 Val = LookUp[j]['val']
+                ValLookedUp = [LookUpValueExists[i]]
                 if (('Q' in Frame) or ('q' in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                     QorKColumn += ['Q']
                     LookUpFormList += [Form]
                     LookUpEndDateList += [EndDate]
                     LookUpValList += [Val]
+                    ValLookedUpList += [ValLookedUp]
                 elif (('Q' not in Frame) or ('q' not in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                     QorKColumn += ['K']
                     LookUpFormList += [Form]
                     LookUpEndDateList += [EndDate]
                     LookUpValList += [Val]
+                    ValLookedUpList += [ValLookedUp]
         FormResults += [LookUpFormList]
         EndDateResults += [LookUpEndDateList]
         ValResults += [LookUpValList]
         QorKResults += [QorKColumn]
+        ValLookedUpResults += [ValLookedUpList]
 
 # Compile output into numpy array prior to dataframe creation
 FormResults = list(chain.from_iterable(FormResults))
 EndDateResults = list(chain.from_iterable(EndDateResults))
 ValResults = list(chain.from_iterable(ValResults))
 QorKResults = list(chain.from_iterable(QorKResults))
+ValLookedUpResults = list(chain.from_iterable(ValLookedUpResults))
 
 TotalLookUpCount = len(ValResults)
 FormResultsArray = np.array(FormResults).reshape(TotalLookUpCount, 1)
 EndDateResultsArray = np.array(EndDateResults).reshape(TotalLookUpCount, 1)
 ValResultsArray = np.array(ValResults).reshape(TotalLookUpCount, 1)
 QorKResultsArray = np.array(QorKResults).reshape(TotalLookUpCount, 1)
-FilingResultsArray = np.concatenate((FormResultsArray, EndDateResultsArray, ValResultsArray, QorKResultsArray), axis= 1)
-FilingResultsDF = pd.DataFrame(FilingResultsArray, columns= ['Form', 'End Date', LookUpValue[0], 'Q or K'])
-FilingResultsDF.sort_values(by='End Date', inplace=True)
-FilingResultsDF.reset_index(drop= True, inplace= True)
+ValLookedUpArray = np.array(ValLookedUpResults).reshape(TotalLookUpCount, 1)
+
+FilingResultsArray = np.concatenate((FormResultsArray,
+                                     EndDateResultsArray, ValResultsArray,
+                                     QorKResultsArray,
+                                     ValLookedUpArray), axis=1)
+FilingResultsDF = pd.DataFrame(FilingResultsArray, columns=['Form', 'End Date', LookUpValue[0], 'Q or K', 'Lookup Val'])
+
+# Dataframe must be double sorted for next step to work properly
+FilingResultsDF.sort_values(by=['End Date', 'Q or K'], inplace=True)
+FilingResultsDF.reset_index(drop=True, inplace=True)
+
+# Goes through FilingResultsDF and checks to see if multiple hits for same date, keeps the superior value
+InferiorLookupValIndex = []
+for i in range(0, (len(FilingResultsDF)-1)):
+    if ((FilingResultsDF.iloc[i+1, 4] > FilingResultsDF.iloc[i, 4]) and
+            (FilingResultsDF.iloc[i+1, 1] == FilingResultsDF.iloc[i, 1]) and
+            (FilingResultsDF.iloc[i+1, 3] == FilingResultsDF.iloc[i, 3])):
+        InferiorLookupValIndex += [i + 1]
+    elif ((FilingResultsDF.iloc[i+1, 4] < FilingResultsDF.iloc[i, 4]) and
+            (FilingResultsDF.iloc[i+1, 1] == FilingResultsDF.iloc[i, 1]) and
+            (FilingResultsDF.iloc[i+1, 3] == FilingResultsDF.iloc[i, 3])):
+        InferiorLookupValIndex += [i]
+
+FilingResultsDF.drop(InferiorLookupValIndex, inplace=True)
+FilingResultsDF.reset_index(drop=True, inplace=True)
 
 StopTimer3 = time.perf_counter()
-print('Filing Data:', StopTimer3 - StartTimer3)
 
 StartTimer4 = time.perf_counter()
+
 # Identify duplicate End Dates
 EndDateList = FilingResultsDF.loc[:, 'End Date']
 EndDateList = EndDateList.values
 # Returns the values of only the duplicates
-UniqueEndDates, EndDateCount = np.unique(EndDateList, return_counts= True)
+UniqueEndDates, EndDateCount = np.unique(EndDateList, return_counts=True)
 DuplicateEndDates = UniqueEndDates[EndDateCount > 1]
 
 # Identifies the duplicate end dates index values
@@ -213,23 +247,31 @@ for i in range(0, len(DuplicateDatesIndices)):
     for j in range (0, len(DuplicateDatesIndices)):
         RepetitiveDatesCheckVal2 = DuplicateDatesIndices[j]
         if i != j:
-            if (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) and ((FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 3] == 'Q') and (FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 3] == 'K')):
+            if (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) \
+                    and ((FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 3] == 'Q') and
+                         (FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 3] == 'K')):
                 RowsToDelete += [RepetitiveDatesCheckVal2]
-            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) and ((FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 3] == 'K') and (FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 3] == 'Q')):
+            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) \
+                    and ((FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 3] == 'K') and
+                         (FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 3] == 'Q')):
                 RowsToDelete += [RepetitiveDatesCheckVal1]
-            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) and (('Q' in FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 0]) and ('K' in FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 0])):
+            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) \
+                    and (('Q' in FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 0]) and
+                         ('K' in FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 0])):
                 RowsToDelete += [RepetitiveDatesCheckVal2]
-            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) and (('K' in FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 0]) and ('Q' in FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 0])):
+            elif (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) \
+                    and (('K' in FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 0]) and
+                         ('Q' in FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 0])):
                 RowsToDelete += [RepetitiveDatesCheckVal1]
 
 # Deletes previously identified rows
 UniqueRowsToDelete = np.unique(RowsToDelete)
 UniqueRowsToDelete = UniqueRowsToDelete.tolist()
-FilingResultsDF.drop(RowsToDelete, inplace= True)
+FilingResultsDF.drop(RowsToDelete, inplace=True)
 
 # Remove duplicate rows if they've managed to pass through and reset the dataframe index
-FilingResultsDF.drop_duplicates(inplace = True)
-FilingResultsDF.reset_index(drop= True, inplace= True)
+FilingResultsDF.drop_duplicates(inplace=True)
+FilingResultsDF.reset_index(drop=True, inplace=True)
 
 # Get dataframe index values of entries with annual result reported
 AnnualValueList = (FilingResultsDF[FilingResultsDF['Q or K'] == 'K']).index.tolist()
@@ -256,10 +298,12 @@ if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
         FilingResultsDF.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
         FilingResultsDF.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
 
+print(FilingResultsDF)
+
 StopTimer4 = time.perf_counter()
-print('Manipulate Data Timer:', (StopTimer4-StartTimer4), 'sec')
 
 StartTimer5 = time.perf_counter()
+
 # Determines if filing end date falls on a weekend or holiday for use in finding an historic stock quote
 ValidEndDateList = []
 for i in range(0, len(FilingResultsDF)):
@@ -321,10 +365,11 @@ for i in range(0, len(FilingResultsDF)):
                     ValidEndDateList += [str(EndDateForQuote)]
                     ValidDate = 1
                 DayDelta = DayDelta + 1
+
 StopTimer5 = time.perf_counter()
-print('Find Valid Market Date Timer:', (StopTimer5-StartTimer5), 'sec')
 
 StartTimer6 = time.perf_counter()
+
 # Create a list of historic stock quotes as well as the valid quote date
 HistoricQuoteDateList = []
 HistoricQuoteList = []
@@ -332,19 +377,27 @@ for i in range(0, len(ValidEndDateList)):
     ValidEndDate = datetime.strptime(ValidEndDateList[i], ISO8601)
     ValidEndDateStripped = str(ValidEndDateList[i]).replace('-', '')
     IEXUrl = BaseUrlIEX + Ticker + '/chart/date/' + ValidEndDateStripped + '?chartByDay=true&token=' + IEXToken
-    # I've run into issues with rate limiting, the while loop below forces our api calls to go through
-    StatusCode = 0
-    while StatusCode != 200:
-        IEXResponse = requests.get(IEXUrl, headers=requests_headers)
-        StatusCode = IEXResponse.status_code
-        if StatusCode == 200:
-            HistoricQuote = IEXResponse.json()[0]['close']
-            HistoricQuoteDateList += [str(ValidEndDate.date())]
-            HistoricQuoteList += [HistoricQuote]
+    # Pull IEX historic quote value, timer is to prevent rate limiting (1 request every 10 ms)
+    IEXStartTimer = time.perf_counter()
+    IEXResponse = requests.get(IEXUrl, headers=requests_headers)
+    StatusCode = IEXResponse.status_code
+    if StatusCode == 200:
+        HistoricQuote = IEXResponse.json()[0]['close']
+        HistoricQuoteDateList += [str(ValidEndDate.date())]
+        HistoricQuoteList += [HistoricQuote]
+    else:
+        iex_http_response_codes(IEXResponse)
+        exit()
+    IEXStopTimer = time.perf_counter()
+    ProcessTime = IEXStopTimer - IEXStartTimer
+    # IEX allows 1 search every 10 ms
+    if ProcessTime < 0.01:
+        time.sleep(0.01 - ProcessTime)
+
 StopTimer6 = time.perf_counter()
-print('Historic Quote Timer:', (StopTimer6-StartTimer6), 'sec')
 
 StartTimer7 = time.perf_counter()
+
 # Merge dataframes
 if len(HistoricQuoteList) == len(HistoricQuoteDateList) == len(FilingResultsDF):
     HistoricQuoteDataframe = pd.DataFrame(HistoricQuoteList, HistoricQuoteDateList)
@@ -353,9 +406,18 @@ if len(HistoricQuoteList) == len(HistoricQuoteDateList) == len(FilingResultsDF):
     ConcatDataFrame = pd.concat([FilingResultsDF, HistoricQuoteDataframe], axis=1)
     print(ConcatDataFrame)
 else:
-    print('Number of datapoints do not match')
+    print(len(HistoricQuoteList), len(HistoricQuoteDateList), len(FilingResultsDF))
+    print('Number of data points do not match')
     exit()
+
 StopTimer7 = time.perf_counter()
+
+print('User Inputs Timer:', StopTimer1 - StartTimer1, 'sec')
+print('Initial EDGAR Initial Data Timer:', StopTimer2 - StartTimer2, 'sec')
+print('Filing Data Timer:', StopTimer3 - StartTimer3, 'sec')
+print('Manipulate Data Timer:', (StopTimer4-StartTimer4), 'sec')
+print('Find Valid Market Date Timer:', (StopTimer5-StartTimer5), 'sec')
+print('Historic Quote Timer:', (StopTimer6-StartTimer6), 'sec')
 print('Merge Dataframe Timer:', (StopTimer7-StartTimer7), 'sec')
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
