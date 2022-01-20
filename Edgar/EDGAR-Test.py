@@ -19,7 +19,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 StartTimer1 = time.perf_counter()
 
 # User input ticker
-Ticker = 'jpm'  # check what's going on with: sofi, qs, rklb
+Ticker = 'bac'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
@@ -58,9 +58,11 @@ except:
 if ('Cloud' in CloudOrSandbox) or ('cloud' in CloudOrSandbox):
     BaseUrlIEX = 'https://cloud.iexapis.com/stable/stock/'
     IEXToken = 'pk_acd6e54847cd428b8959702163eca5ba'
+    IEXRate = 0.01
 elif ('Sandbox' in CloudOrSandbox) or ('sandbox' in CloudOrSandbox):
     BaseUrlIEX = 'https://sandbox.iexapis.com/stable/stock/'
     IEXToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
+    IEXRate = 0.5
 else:
     print('Input valid mode for IEX')
     exit()
@@ -208,17 +210,19 @@ FilingResultsDF.sort_values(by=['End Date', 'Q or K'], inplace=True)
 FilingResultsDF.reset_index(drop=True, inplace=True)
 
 # Goes through FilingResultsDF and checks to see if multiple data points for the same date and the same 'Q or K' value.
-# The inferior value (based off the LookUpVal list order) is deleted
+# First for loop makes sure j+1 value does not fall outside the dataframe
+# The inferior value (based off the user defined LookUpValue list order) is deleted
 InferiorLookupValIndex = []
-for i in range(0, (len(FilingResultsDF)-1)):
-    if ((FilingResultsDF.iloc[i+1, 4] > FilingResultsDF.iloc[i, 4]) and
-            (FilingResultsDF.iloc[i+1, 1] == FilingResultsDF.iloc[i, 1]) and
-            (FilingResultsDF.iloc[i+1, 3] == FilingResultsDF.iloc[i, 3])):
-        InferiorLookupValIndex += [i + 1]
-    elif ((FilingResultsDF.iloc[i+1, 4] < FilingResultsDF.iloc[i, 4]) and
-            (FilingResultsDF.iloc[i+1, 1] == FilingResultsDF.iloc[i, 1]) and
-            (FilingResultsDF.iloc[i+1, 3] == FilingResultsDF.iloc[i, 3])):
-        InferiorLookupValIndex += [i]
+for i in range(1, (len(LookUpValue)+1)):
+    for j in range(0, (len(FilingResultsDF)-i)):
+        if ((FilingResultsDF.iloc[j+i, 4] > FilingResultsDF.iloc[j, 4]) and
+                (FilingResultsDF.iloc[j+i, 1] == FilingResultsDF.iloc[j, 1]) and
+                (FilingResultsDF.iloc[j+i, 3] == FilingResultsDF.iloc[j, 3])):
+            InferiorLookupValIndex += [j+i]
+        elif ((FilingResultsDF.iloc[j+i, 4] < FilingResultsDF.iloc[j, 4]) and
+                (FilingResultsDF.iloc[j+i, 1] == FilingResultsDF.iloc[j, 1]) and
+                (FilingResultsDF.iloc[j+i, 3] == FilingResultsDF.iloc[j, 3])):
+            InferiorLookupValIndex += [j]
 
 FilingResultsDF.drop(InferiorLookupValIndex, inplace=True)
 FilingResultsDF.reset_index(drop=True, inplace=True)
@@ -299,7 +303,10 @@ if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
         FilingResultsDF.at[ValidAnnualValList[i], 'Revenues'] = CalculatedFourthQuarterVal[i]
         FilingResultsDF.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
 
-print(FilingResultsDF)
+# If the dataframe is empty then exit
+if len(FilingResultsDF) == 0:
+    print('Query returned no values, check SEC database to find additional json tags')
+    exit()
 
 StopTimer4 = time.perf_counter()
 
@@ -353,17 +360,17 @@ for i in range(0, len(FilingResultsDF)):
             ValidDate = 0
             DayDelta = DayValue - 4
             while ValidDate == 0:
-                EndDateForQuote = EndDateForQuote - timedelta(days=DayDelta)
+                EndDateForQuoteCalc = EndDateForQuote - timedelta(days=DayDelta)
                 HolidayList = []
                 for td in soup.find_all('td'):
                     Holiday = td.get_text()
                     # This if statement pulls holiday dates
-                    if str(EndDateForQuote.year) in Holiday:
+                    if str(EndDateForQuoteCalc.year) in Holiday:
                         Holiday = datetime.strptime(Holiday, '%B %d, %Y')
                         Holiday = str(Holiday.date())
                         HolidayList += [Holiday]
-                if str(EndDateForQuote) not in HolidayList:
-                    ValidEndDateList += [str(EndDateForQuote)]
+                if str(EndDateForQuoteCalc) not in HolidayList:
+                    ValidEndDateList += [str(EndDateForQuoteCalc)]
                     ValidDate = 1
                 DayDelta = DayDelta + 1
 
@@ -391,9 +398,9 @@ for i in range(0, len(ValidEndDateList)):
         exit()
     IEXStopTimer = time.perf_counter()
     ProcessTime = IEXStopTimer - IEXStartTimer
-    # IEX allows 1 search every 10 ms
-    if ProcessTime < 0.01:
-        time.sleep(0.01 - ProcessTime)
+    # IEX allows 1 search every 10 ms in cloud mode
+    if ProcessTime < IEXRate:
+        time.sleep(IEXRate - ProcessTime)
 
 StopTimer6 = time.perf_counter()
 
@@ -414,6 +421,8 @@ else:
 
 StopTimer7 = time.perf_counter()
 
+print(ConcatDataFrame)
+
 print('User Inputs Timer:', StopTimer1 - StartTimer1, 'sec')
 print('Initial EDGAR Initial Data Timer:', StopTimer2 - StartTimer2, 'sec')
 print('Filing Data Timer:', StopTimer3 - StartTimer3, 'sec')
@@ -421,6 +430,7 @@ print('Manipulate Data Timer:', (StopTimer4-StartTimer4), 'sec')
 print('Find Valid Market Date Timer:', (StopTimer5-StartTimer5), 'sec')
 print('Historic Quote Timer:', (StopTimer6-StartTimer6), 'sec')
 print('Merge Dataframe Timer:', (StopTimer7-StartTimer7), 'sec')
+print('Overall Process Timer:', StopTimer7-StartTimer1, 'sec')
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result
 
