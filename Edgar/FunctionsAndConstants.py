@@ -77,5 +77,12 @@ RevenueList = ['Revenues',
                'RevenuesNetOfInterestExpense',
                'SalesRevenueNet',
                'RevenueFromContractWithCustomerExcludingAssessedTax']
+
 NetIncomeList = ['NetIncomeLoss',
                  'ProfitLoss']
+
+EPSList = ['EarningsPerShareBasic',
+           'EarningsPerShareDiluted']
+
+SharesOutstandingList = ['CommonStockSharesOutstanding',
+                         'WeightedAverageNumberOfSharesOutstandingBasic']
