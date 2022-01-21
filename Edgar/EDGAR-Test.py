@@ -7,7 +7,7 @@ import requests
 from pprint import pprint
 from itertools import chain
 from bs4 import BeautifulSoup as bs
-from Functions import *
+from FunctionsAndConstants import *
 
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
@@ -19,12 +19,12 @@ https://www.sec.gov/edgar/sec-api-documentation
 StartTimer1 = time.perf_counter()
 
 # User input ticker
-Ticker = 'F'  # spacs is where iex suffers, need to find out if there's a workaround
+Ticker = 'gme'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
-# THE ORDER OF THIS LIST MATTERS, SORT FROM MOST IMPORTANT TO LEAST IMPORTANT
-LookUpValue = NetIncomeList
+# THE ORDER OF THIS LIST MATTERS, SORT FROM MOST TO LEAST IMPORTANT
+LookUpValue = EPSList
 
 # IEX Cloud Inputs:
 CloudOrSandbox = 'Sandbox'  # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
@@ -73,13 +73,6 @@ CIKLeadingZeros = CIK.zfill(10)
 
 print('Ticker: ', Ticker.upper())
 print('CIK #: ', CIK)
-"""
-# EDGAR page for requested ticker
-CompanyOverviewURL = 'https://data.sec.gov/submissions/CIK' + CIKLeadingZeros + '.json'
-
-# Get the data, do not remove headers parameter
-response = requests.get(CompanyOverviewURL, headers= requests_headers)
-"""
 
 # Spoofs as real browser
 requests_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
@@ -244,7 +237,7 @@ for i in range(0, len(DuplicateEndDates)):
 RowsToDelete = []
 for i in range(0, len(DuplicateDatesIndices)):
     RepetitiveDatesCheckVal1 = DuplicateDatesIndices[i]
-    for j in range (0, len(DuplicateDatesIndices)):
+    for j in range(0, len(DuplicateDatesIndices)):
         RepetitiveDatesCheckVal2 = DuplicateDatesIndices[j]
         if i != j:
             if (FilingResultsDF.iloc[RepetitiveDatesCheckVal1, 1] == FilingResultsDF.iloc[RepetitiveDatesCheckVal2, 1]) \
@@ -282,11 +275,11 @@ ValidAnnualValList = []
 for i in range(0, len(AnnualValueList)):
     if AnnualValueList[i] > 2:
         AnnualIndexVal = AnnualValueList[i]
-        AnnualVal = int(FilingResultsDF.iloc[AnnualIndexVal, 2])
+        AnnualVal = float(FilingResultsDF.iloc[AnnualIndexVal, 2])
         FirstThreeQuartersList = []
         for j in range(1, 4):
             if datetime.strptime(FilingResultsDF.iloc[AnnualIndexVal, 1], ISO8601) - datetime.strptime(FilingResultsDF.iloc[AnnualIndexVal - j, 1], ISO8601) < timedelta(days= 365):
-                FirstThreeQuartersList += [int(FilingResultsDF.iloc[AnnualIndexVal - j, 2])]
+                FirstThreeQuartersList += [float(FilingResultsDF.iloc[AnnualIndexVal - j, 2])]
         if len(FirstThreeQuartersList) > 2:
             FourthQuarterVal = AnnualVal - sum(FirstThreeQuartersList)
             CalculatedFourthQuarterVal += [FourthQuarterVal]
@@ -429,7 +422,13 @@ print('Overall Process Timer:', StopTimer7-StartTimer1, 'sec')
 
 # Everything below can be considered obsolete since it was created before I figured out there was an SEC api, but it may
 # prove to be useful in the future
-"""        
+"""
+# EDGAR page for requested ticker
+CompanyOverviewURL = 'https://data.sec.gov/submissions/CIK' + CIKLeadingZeros + '.json'
+
+# Get the data, do not remove headers parameter
+response = requests.get(CompanyOverviewURL, headers= requests_headers)
+        
 for i in range(0, len(LookUpValue)):
         
 
