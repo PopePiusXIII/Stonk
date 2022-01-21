@@ -19,7 +19,7 @@ https://www.sec.gov/edgar/sec-api-documentation
 StartTimer1 = time.perf_counter()
 
 # User input ticker
-Ticker = 'bac'  # spacs is where iex suffers, need to find out if there's a workaround
+Ticker = 'dal'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
@@ -420,8 +420,6 @@ else:
     exit()
 
 StopTimer7 = time.perf_counter()
-
-print(ConcatDataFrame)
 
 print('User Inputs Timer:', StopTimer1 - StartTimer1, 'sec')
 print('Initial EDGAR Initial Data Timer:', StopTimer2 - StartTimer2, 'sec')
