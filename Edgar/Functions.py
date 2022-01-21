@@ -19,6 +19,7 @@ def general_http_response_codes(response):
     else:
         print('N/A')
 
+
 def iex_http_response_codes(IEXResponse):
     response_status = str(IEXResponse.status_code)
     if '200' in response_status:
@@ -71,3 +72,10 @@ def iex_http_response_codes(IEXResponse):
         print('IEX Response =', response_status,
               'Unknown error')
 
+
+RevenueList = ['Revenues',
+               'RevenuesNetOfInterestExpense',
+               'SalesRevenueNet',
+               'RevenueFromContractWithCustomerExcludingAssessedTax']
+NetIncomeList = ['NetIncomeLoss',
+                 'ProfitLoss']
