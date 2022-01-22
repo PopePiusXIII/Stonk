@@ -5,3 +5,6 @@ MSFT_CompanyFacts.json
 ParseAllJsonKeys.py
 UniqueIFRS-Full.csv
 UniqueUS-GAAP.csv
+Edgar/__pycache__/Functions.cpython-39.pyc
+.idea/misc.xml
+.idea/workspace.xml
