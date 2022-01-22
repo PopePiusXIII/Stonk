@@ -1,3 +1,12 @@
+import requests
+
+
+# ISO 8601 date format
+ISO8601 = '%Y-%m-%d'
+
+# Spoofs as real browser
+requests_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
+
 def general_http_response_codes(response):
     response_status = str(response.status_code)
     if '200' in response_status:
@@ -73,16 +82,62 @@ def iex_http_response_codes(IEXResponse):
               'Unknown error')
 
 
-RevenueList = ['Revenues',
+def sec_api_response(CIKLeadingZeros):
+    # SEC filing api
+    url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK' + CIKLeadingZeros + '.json'
+    response = requests.get(url, headers=requests_headers)
+    USGAAPList = []
+    IFRSFullList = []
+    try:
+        # Output EDGAR data
+        EDGAR_json = response.json()
+        EDGAR_json = EDGAR_json['facts']['us-gaap']
+        JSONKEYS = EDGAR_json.keys()
+        List = list(JSONKEYS)
+        USGAAPList += [List]
+    except:
+        # Output EDGAR data
+        EDGAR_json = response.json()
+        EDGAR_json = EDGAR_json['facts']['ifrs-full']
+        JSONKEYS = EDGAR_json.keys()
+        List = list(JSONKEYS)
+        IFRSFullList += [List]
+
+    # Decides what the valid taxonomy is for the given ticker
+    if USGAAPList:
+        ValidTaxonomy = USGAAPList
+    elif IFRSFullList:
+        ValidTaxonomy = IFRSFullList
+    else:
+        print('No valid taxonomy')
+        exit()
+    return ValidTaxonomy, EDGAR_json, response
+
+
+def lookup_value_exists(LookUpValue, ValidTaxonomy):
+    LookUpValueExists = []
+    for i in range(0, len(LookUpValue)):
+        if LookUpValue[i] in ValidTaxonomy[0]:
+            LookUpValueExists += [i]
+        else:
+            LookUpValueExists += [-1]
+    return LookUpValueExists
+
+
+RevenueList = ['Revenue',
+               'Revenues',
                'RevenuesNetOfInterestExpense',
                'SalesRevenueNet',
                'RevenueFromContractWithCustomerExcludingAssessedTax']
 
-NetIncomeList = ['NetIncomeLoss',
+NetIncomeList = ['Net Income',
+                 'NetIncomeLoss',
                  'ProfitLoss']
 
-EPSList = ['EarningsPerShareBasic',
+EPSList = ['EPS',
+           'EarningsPerShareBasic',
            'EarningsPerShareDiluted']
 
-SharesOutstandingList = ['CommonStockSharesOutstanding',
+SharesOutstandingList = ['Shares Outstanding',
+                         'CommonStockSharesOutstanding',
                          'WeightedAverageNumberOfSharesOutstandingBasic']
