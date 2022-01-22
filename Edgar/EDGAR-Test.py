@@ -7,7 +7,7 @@ import requests
 from pprint import pprint
 from itertools import chain
 from bs4 import BeautifulSoup as bs
-from FunctionsAndConstants import *
+from FunctionsConstantsUserInputs import *
 
 """
 The SEC requires all companies to submit their quarterly and annual reports (10-Q and 10-K) using a 'standard' taxonomy 
@@ -19,19 +19,16 @@ https://www.sec.gov/edgar/sec-api-documentation
 StartTimer1 = time.perf_counter()
 
 # User input ticker
-Ticker = 'gme'  # spacs is where iex suffers, need to find out if there's a workaround
+Ticker = 'f'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
 # THE ORDER OF THIS LIST MATTERS, SORT FROM MOST TO LEAST IMPORTANT
-LookUpValue = EPSList
+LookUpValue = SharesOutstandingList
 
 # IEX Cloud Inputs:
 CloudOrSandbox = 'Sandbox'  # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
 YearsBack = 5  # <-- On the free tier for now, 15 years when on paid tier
-
-# ISO 8601 date format
-ISO8601 = '%Y-%m-%d'
 
 # Show all rows and columns for dataframe
 pd.set_option('display.max_columns', None)
@@ -74,43 +71,12 @@ CIKLeadingZeros = CIK.zfill(10)
 print('Ticker: ', Ticker.upper())
 print('CIK #: ', CIK)
 
-# Spoofs as real browser
-requests_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'}
-
-# SEC filing api
-url = 'https://data.sec.gov/api/xbrl/companyfacts/CIK' + CIKLeadingZeros + '.json'
-response = requests.get(url, headers= requests_headers)
-
-# Returns the response code of the site
-general_http_response_codes(response)
-
 # Tries US-GAAP and IFRS-Full taxonomies and makes a list of all the tags in the correct taxonomy
 # American companies *should* be using US-GAAP, international companies *should* be using IFRS-Full
-USGAAPList = []
-IFRSFullList = []
-try:
-    # Output EDGAR data
-    EDGAR_json = response.json()
-    EDGAR_json = EDGAR_json['facts']['us-gaap']
-    JSONKEYS = EDGAR_json.keys()
-    List = list(JSONKEYS)
-    USGAAPList += [List]
-except:
-    # Output EDGAR data
-    EDGAR_json = response.json()
-    EDGAR_json = EDGAR_json['facts']['ifrs-full']
-    JSONKEYS = EDGAR_json.keys()
-    List = list(JSONKEYS)
-    IFRSFullList += [List]
+ValidTaxonomy, EDGAR_json, response = sec_api_response(CIKLeadingZeros)
 
-# Decides what the valid taxonomy is for the given ticker
-if USGAAPList:
-    ValidTaxonomy = USGAAPList
-elif IFRSFullList:
-    ValidTaxonomy = IFRSFullList
-else:
-    print('No valid taxonomy')
-    exit()
+# Print SEC API response code
+general_http_response_codes(response)
 
 StopTimer2 = time.perf_counter()
 
@@ -119,12 +85,8 @@ StartTimer3 = time.perf_counter()
 # Create a list to see if our LookUpValue exists. Since there are 13k+ companies with files dating back to who knows
 # when it is best to pass multiple lookup values, however, if the lookup value doesn't exist then the code kicks back
 # an error. Creating a list called 'LookUpValueExists' allows us to screen the given value before searching
-LookUpValueExists = []
-for i in range(0, len(LookUpValue)):
-    if LookUpValue[i] in ValidTaxonomy[0]:
-        LookUpValueExists += [i]
-    else:
-        LookUpValueExists += [-1]
+
+LookUpValueExists = lookup_value_exists(LookUpValue, ValidTaxonomy)
 
 # Return the form, the end date, the value, and identify if it is a quarterly or annual result
 FormResults = []
