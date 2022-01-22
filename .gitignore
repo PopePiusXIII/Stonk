@@ -14,3 +14,5 @@ Edgar/2007-2023OpenCloseMarketDays.txt
 Edgar/2007-2023OpenCloseMarketDays.xlsx
 Edgar/__pycache__/UserInputs.cpython-39.pyc
 Edgar/Holidays2007-2023.csv
+.idea/misc.xml
+.idea/workspace.xml
