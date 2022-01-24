@@ -6,7 +6,7 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup as bs
-
+from pprint import pprint
 
 def initialize(YearsBack, CloudOrSandbox, Ticker):
     # Print current date and time, and calculate now minus 5 years + 1 day
@@ -62,6 +62,7 @@ def sec_api_response(CIKLeadingZeros, requests_headers):
     try:
         # Output EDGAR data
         EDGAR_json = response.json()
+        EDGAR_DEI_json = EDGAR_json['facts']['dei']
         EDGAR_json = EDGAR_json['facts']['us-gaap']
         JSONKEYS = EDGAR_json.keys()
         List = list(JSONKEYS)
@@ -69,6 +70,7 @@ def sec_api_response(CIKLeadingZeros, requests_headers):
     except:
         # Output EDGAR data
         EDGAR_json = response.json()
+        EDGAR_DEI_json = EDGAR_json['facts']['dei']
         EDGAR_json = EDGAR_json['facts']['ifrs-full']
         JSONKEYS = EDGAR_json.keys()
         List = list(JSONKEYS)
@@ -82,7 +84,7 @@ def sec_api_response(CIKLeadingZeros, requests_headers):
     else:
         print('No valid taxonomy')
         exit()
-    return ValidTaxonomy, EDGAR_json, response
+    return ValidTaxonomy, EDGAR_json, EDGAR_DEI_json, response, url
 
 
 # Create a list to see if our LookUpValue exists. Since there are 13k+ companies with files dating back to who knows
@@ -99,13 +101,56 @@ def lookup_value_exists(LookUpValue, ValidTaxonomy):
 
 
 # Return the form, the end date, the value, and identify if it is a quarterly or annual result
-def get_requested_data(LookUpValueExists, EDGAR_json, LookUpValue, DeltaDate, ISO8601):
+def get_requested_data(LookUpValueExists, EDGAR_json, EDGAR_DEI_json, LookUpValue, DeltaDate, ISO8601):
     FormResults = []
     EndDateResults = []
     ValResults = []
     QorKResults = []
     ValLookedUpResults = []
     for i in range(0, len(LookUpValueExists)):
+        """
+        if LookUpValue[1] == 'EntityCommonStockSharesOutstanding':
+            LookUp = EDGAR_DEI_json[LookUpValue[1]]['units']
+            pprint(LookUp)
+            # Automatically find the next json key
+            Key = list(LookUp.keys())[0]
+            LookUp = LookUp[Key]
+            # Returns how many data points we are pulling for the given LookUpValue
+            LookUpCount = len(LookUp)
+            LookUpFormList = []
+            LookUpEndDateList = []
+            LookUpValList = []
+            QorKColumn = []
+            ValLookedUpList = []
+            for j in range(0, LookUpCount):
+                if 'frame' in LookUp[j]:
+                    Frame = LookUp[j]['frame']
+                else:
+                    Frame = 'N/A'
+                Form = LookUp[j]['form']
+                EndDate = LookUp[j]['end']
+                Val = LookUp[j]['val']
+                ValLookedUp = [1]
+                if (('Q' in Frame) or ('q' in Frame)) and (
+                        datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                    QorKColumn += ['Q']
+                    LookUpFormList += [Form]
+                    LookUpEndDateList += [EndDate]
+                    LookUpValList += [Val]
+                    ValLookedUpList += [ValLookedUp]
+                elif (('Q' not in Frame) or ('q' not in Frame)) and (
+                        datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                    QorKColumn += ['K']
+                    LookUpFormList += [Form]
+                    LookUpEndDateList += [EndDate]
+                    LookUpValList += [Val]
+                    ValLookedUpList += [ValLookedUp]
+            FormResults += [LookUpFormList]
+            EndDateResults += [LookUpEndDateList]
+            ValResults += [LookUpValList]
+            QorKResults += [QorKColumn]
+            ValLookedUpResults += [ValLookedUpList]
+        """
         if LookUpValueExists[i] >= 0:
             LookUp = EDGAR_json[LookUpValue[i]]['units']
             # Automatically find the next json key
@@ -174,6 +219,7 @@ def data_to_dataframe(FormResults, EndDateResults, ValResults, QorKResults, ValL
     # Dataframe must be double sorted for next step to work properly
     FilingResultsDF.sort_values(by=['End Date', 'Q or K'], inplace=True)
     FilingResultsDF.reset_index(drop=True, inplace=True)
+
     return FilingResultsDF
 
 
@@ -195,6 +241,7 @@ def remove_inferior_rows(LookUpValue, FilingResultsDF):
 
     FilingResultsDF.drop(InferiorLookupValIndex, inplace=True)
     FilingResultsDF.reset_index(drop=True, inplace=True)
+
     return FilingResultsDF
 
 
@@ -249,40 +296,43 @@ def select_quarterly_over_annual(FilingResultsDF):
     # Remove duplicate rows if they've managed to pass through and reset the dataframe index
     FilingResultsDF.drop_duplicates(inplace=True)
     FilingResultsDF.reset_index(drop=True, inplace=True)
+
     return FilingResultsDF
 
 
-def calculate_quarterly(FilingResultsDF, ISO8601, LookUpValue):
+def calculate_quarterly(k, FilingResultsDF, ISO8601, LookUpValueList):
     # Get dataframe index values of entries with annual result reported
     AnnualValueList = (FilingResultsDF[FilingResultsDF['Q or K'] == 'K']).index.tolist()
+    ColumnHeader = LookUpValueList[k][0]
+    if 'Shares Outstanding' not in ColumnHeader:
+        # Find the index of the annual values and calculate a fourth quarter value only if there are 3 prior quarterly values
+        CalculatedFourthQuarterVal = []
+        ValidAnnualValList = []
+        for i in range(0, len(AnnualValueList)):
+            if AnnualValueList[i] > 2:
+                AnnualIndexVal = AnnualValueList[i]
+                AnnualVal = float(FilingResultsDF.iloc[AnnualIndexVal, 2])
+                FirstThreeQuartersList = []
+                for j in range(1, 4):
+                    if datetime.strptime(FilingResultsDF.iloc[AnnualIndexVal, 1], ISO8601) - datetime.strptime(
+                            FilingResultsDF.iloc[AnnualIndexVal - j, 1], ISO8601) < timedelta(days=365):
+                        FirstThreeQuartersList += [float(FilingResultsDF.iloc[AnnualIndexVal - j, 2])]
+                if len(FirstThreeQuartersList) > 2:
+                    FourthQuarterVal = AnnualVal - sum(FirstThreeQuartersList)
+                    if FourthQuarterVal.is_integer():
+                        FourthQuarterVal = int(FourthQuarterVal)
+                    CalculatedFourthQuarterVal += [FourthQuarterVal]
+                    ValidAnnualValList += [AnnualIndexVal]
 
-    # Find the index of the annual values and calculate a fourth quarter value only if there are 3 prior quarterly values
-    CalculatedFourthQuarterVal = []
-    ValidAnnualValList = []
-    for i in range(0, len(AnnualValueList)):
-        if AnnualValueList[i] > 2:
-            AnnualIndexVal = AnnualValueList[i]
-            AnnualVal = float(FilingResultsDF.iloc[AnnualIndexVal, 2])
-            FirstThreeQuartersList = []
-            for j in range(1, 4):
-                if datetime.strptime(FilingResultsDF.iloc[AnnualIndexVal, 1], ISO8601) - datetime.strptime(
-                        FilingResultsDF.iloc[AnnualIndexVal - j, 1], ISO8601) < timedelta(days=365):
-                    FirstThreeQuartersList += [float(FilingResultsDF.iloc[AnnualIndexVal - j, 2])]
-            if len(FirstThreeQuartersList) > 2:
-                FourthQuarterVal = AnnualVal - sum(FirstThreeQuartersList)
-                CalculatedFourthQuarterVal += [FourthQuarterVal]
-                ValidAnnualValList += [AnnualIndexVal]
-
-    # Replace the annual value with a calculated fourth quarter value
-    if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
-        for i in range(0, len(ValidAnnualValList)):
-            FilingResultsDF.at[ValidAnnualValList[i], LookUpValue[0]] = CalculatedFourthQuarterVal[i]
-            FilingResultsDF.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
-
-    # If the dataframe is empty then exit
-    if len(FilingResultsDF) == 0:
-        print('Query returned no values, check SEC database to find additional json tags')
-        exit()
+        # Replace the annual value with a calculated fourth quarter value
+        if len(CalculatedFourthQuarterVal) == len(ValidAnnualValList):
+            for i in range(0, len(ValidAnnualValList)):
+                FilingResultsDF.at[ValidAnnualValList[i], ColumnHeader] = CalculatedFourthQuarterVal[i]
+                FilingResultsDF.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
+        # If the dataframe is empty then exit
+        if len(FilingResultsDF) == 0:
+            print('Query returned no values, check SEC database to find additional json tags')
+            exit()
 
     return FilingResultsDF
 
@@ -291,7 +341,7 @@ def historic_quote_date(FilingResultsDF, ISO8601):
     # Determines if filing end date falls on a weekend or holiday for use in finding an historic stock quote
     ValidEndDateList = []
     for i in range(0, len(FilingResultsDF)):
-        EndDateForQuote = datetime.strptime(FilingResultsDF.iloc[i, 1], ISO8601).date()
+        EndDateForQuote = datetime.strptime(FilingResultsDF.iloc[i, 0], ISO8601).date()
         Today = date.today()
         if Today - EndDateForQuote < timedelta(days=((365 * 5) + 1)):
             DayValue = EndDateForQuote.weekday()
@@ -473,6 +523,7 @@ def iex_http_response_codes(IEXResponse):
               'Unknown error')
 
 
+# The order of look up items matter, sorted from most to least important
 RevenueList = ['Revenue',
                'Revenues',
                'RevenuesNetOfInterestExpense',

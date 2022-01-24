@@ -1,15 +1,15 @@
 from Functions import *
 
 # User input ticker
-Ticker = 'tsla'  # spacs is where iex suffers, need to find out if there's a workaround
+Ticker = 'F'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
 # THE ORDER OF THIS LIST MATTERS, SORT FROM MOST TO LEAST IMPORTANT
-LookUpValueList = [SharesOutstandingList, RevenueList, NetIncomeList]
+LookUpValueList = [RevenueList, NetIncomeList, EPSList, SharesOutstandingList]
 
 # IEX Cloud Inputs:
-CloudOrSandbox = 'Sandbox'  # <-- Input Cloud for real data or Sandbox for testing purposes, sandbox is inaccurate
+CloudOrSandbox = 'Sandbox'  # <-- Input Cloud for real data or Sandbox   for testing purposes, sandbox is inaccurate
 YearsBack = 5  # <-- On the free tier for now, 15 years when on paid tier
 
 # ISO 8601 date format
