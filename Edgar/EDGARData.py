@@ -7,6 +7,7 @@ import requests
 from pprint import pprint
 from itertools import chain
 from bs4 import BeautifulSoup as bs
+from functools import reduce
 from UserInputs import *
 from Functions import *
 
@@ -59,93 +60,11 @@ for k in range(0, len(FilingResultsDFList)):
     DataFrameLengths += [len(FilingResultsDF)]
 StopTimer3 = time.perf_counter()
 
+# This random lambda function merges filing data frames along the date column regardless of how many dataframes there
+# are since pd.merge is limited to two dataframes
 Timer4 = 'Merge Filing Data DataFrames:'
 StartTimer4 = time.perf_counter()
-if len(FilingResultsDFListCleanedUp) == 1:
-    FilingResultsDF = FilingResultsDFListCleanedUp[0]
-else:
-    EqualLengthDataFrames = all(element == DataFrameLengths[0] for element in DataFrameLengths)
-    if EqualLengthDataFrames:
-        FilingResultsDF = pd.concat(FilingResultsDFListCleanedUp, axis=1)
-        FilingResultsDF = FilingResultsDF.loc[:, ~FilingResultsDF.columns.duplicated()]
-    else:
-        if (len(FilingResultsDFListCleanedUp) % 2) == 0:
-            DFLenList = []
-            for i in range(0, len(FilingResultsDFListCleanedUp)):
-                DFLenList += [len(FilingResultsDFListCleanedUp[i])]
-            MaxLen = max(DFLenList)
-            MaxValIndex = DFLenList.index(MaxLen)
-            EndDateDF = FilingResultsDFListCleanedUp[MaxValIndex][['End Date']].copy()
-            MergeStatus = 0
-            DFMergeList = []
-            i = 0
-            while MergeStatus == 0:
-                i = i+1
-                if i == 1:
-                    DFMergeList = []
-                    for j in range(0, len(FilingResultsDFListCleanedUp), 2):
-                        FirstDF = FilingResultsDFListCleanedUp[j]
-                        SecondDF = FilingResultsDFListCleanedUp[j+1]
-                        Merge = FirstDF.merge(SecondDF, how='left', on='End Date')
-                        DFMergeList += [Merge]
-                    if len(DFMergeList) != 1:
-                        MergeStatus = 0
-                    else:
-                        MergeStatus = 1
-                else:
-                    i = len(DFMergeList)
-                    if i != 1:
-                        StoredDFMergeList = DFMergeList
-                        DFMergeList = []
-                        for j in range(0, len(StoredDFMergeList), 2):
-                            FirstDF = StoredDFMergeList[j]
-                            SecondDF = StoredDFMergeList[j + 1]
-                            Merge = FirstDF.merge(SecondDF, how='left', on='End Date')
-                            DFMergeList += [Merge]
-                        MergeStatus = 0
-                    elif len(DFMergeList) == 1:
-                        FilingResultsDF = DFMergeList[0]
-                        MergeStatus = 1
-        else:
-            LastDF = FilingResultsDFListCleanedUp[len(FilingResultsDFListCleanedUp)-1]
-            DFLenList = []
-            for i in range(0, len(FilingResultsDFListCleanedUp)-1):
-                DFLenList += [len(FilingResultsDFListCleanedUp[i])]
-            MaxLen = max(DFLenList)
-            MaxValIndex = DFLenList.index(MaxLen)
-            EndDateDF = FilingResultsDFListCleanedUp[MaxValIndex][['End Date']].copy()
-            MergeStatus = 0
-            DFMergeList = []
-            i = 0
-            while MergeStatus == 0:
-                i = i + 1
-                if i == 1:
-                    DFMergeList = []
-                    for j in range(0, len(FilingResultsDFListCleanedUp)-1, 2):
-                        FirstDF = FilingResultsDFListCleanedUp[j]
-                        SecondDF = FilingResultsDFListCleanedUp[j + 1]
-                        Merge = FirstDF.merge(SecondDF, how='left', on='End Date')
-                        DFMergeList += [Merge]
-                    if len(DFMergeList) != 1:
-                        MergeStatus = 0
-                    else:
-                        FilingResultsDF = DFMergeList[0].merge(LastDF, how='left', on='End Date')
-                        MergeStatus = 1
-                else:
-                    i = len(DFMergeList)
-                    if i != 1:
-                        StoredDFMergeList = DFMergeList
-                        DFMergeList = []
-                        for j in range(0, len(StoredDFMergeList), 2):
-                            FirstDF = StoredDFMergeList[j]
-                            SecondDF = StoredDFMergeList[j + 1]
-                            Merge = FirstDF.merge(SecondDF, how='left', on='End Date')
-                            DFMergeList += [Merge]
-                        MergeStatus = 0
-                    elif len(DFMergeList) == 1:
-                        FilingResultsDF = DFMergeList[0].merge(LastDF, how='left', on='End Date')
-                        MergeStatus = 1
-
+FilingResultsDF = reduce(lambda left, right: pd.merge(left, right, on=['End Date'], how='left'), FilingResultsDFListCleanedUp)
 StopTimer4 = time.perf_counter()
 
 # This section finds a valid date for a historic quote
@@ -166,15 +85,22 @@ StartTimer7 = time.perf_counter()
 ConcatDataFrame = merge_dataframes(HistoricQuoteList, HistoricQuoteDateList, FilingResultsDF)
 StopTimer7 = time.perf_counter()
 
+# This section calculates the PE ratio
+Timer8 = 'Calculate PE Ratio Timer:'
+StartTimer8 = time.perf_counter()
+pe_ratio(ConcatDataFrame)
+StopTimer8 = time.perf_counter()
+
 StopOverallTimer = time.perf_counter()
 
-print(Timer1, StopTimer1 - StartTimer1, 'sec')
-print(Timer2, StopTimer2 - StartTimer2, 'sec')
-print(Timer3, StopTimer3 - StartTimer3, 'sec')
+print(Timer1, (StopTimer1-StartTimer1), 'sec')
+print(Timer2, (StopTimer2-StartTimer2), 'sec')
+print(Timer3, (StopTimer3-StartTimer3), 'sec')
 print(Timer4, (StopTimer4-StartTimer4), 'sec')
 print(Timer5, (StopTimer5-StartTimer5), 'sec')
 print(Timer6, (StopTimer6-StartTimer6), 'sec')
 print(Timer7, (StopTimer7-StartTimer7), 'sec')
+print(Timer8, (StopTimer8-StartTimer8), 'sec')
 print('Overall Process Timer:', StopOverallTimer-StartOverallTimer, 'sec')
 
 # Need to consider appropriate behavior if there are not 3 prior quarterly results to the annual result

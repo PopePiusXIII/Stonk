@@ -8,6 +8,7 @@ import pandas as pd
 from bs4 import BeautifulSoup as bs
 from pprint import pprint
 
+
 def initialize(YearsBack, CloudOrSandbox, Ticker):
     # Print current date and time, and calculate now minus 5 years + 1 day
     print(datetime.now())
@@ -35,7 +36,7 @@ def initialize(YearsBack, CloudOrSandbox, Ticker):
         BaseUrlIEX = 'https://sandbox.iexapis.com/stable/stock/'
         IEXToken = 'Tpk_9f4a350423954be3b70ec31a1b20102d'
         IEXRate = 0.5
-        print('IEX running in \"Sandbox\" mode, data is NOT accurate. FOR TESTING ONLY!')
+        print('IEX running in \"Sandbox\" mode, quote data is NOT accurate. FOR TESTING ONLY!')
     else:
         print('Input valid mode for IEX')
         exit()
@@ -108,49 +109,6 @@ def get_requested_data(LookUpValueExists, EDGAR_json, EDGAR_DEI_json, LookUpValu
     QorKResults = []
     ValLookedUpResults = []
     for i in range(0, len(LookUpValueExists)):
-        """
-        if LookUpValue[1] == 'EntityCommonStockSharesOutstanding':
-            LookUp = EDGAR_DEI_json[LookUpValue[1]]['units']
-            pprint(LookUp)
-            # Automatically find the next json key
-            Key = list(LookUp.keys())[0]
-            LookUp = LookUp[Key]
-            # Returns how many data points we are pulling for the given LookUpValue
-            LookUpCount = len(LookUp)
-            LookUpFormList = []
-            LookUpEndDateList = []
-            LookUpValList = []
-            QorKColumn = []
-            ValLookedUpList = []
-            for j in range(0, LookUpCount):
-                if 'frame' in LookUp[j]:
-                    Frame = LookUp[j]['frame']
-                else:
-                    Frame = 'N/A'
-                Form = LookUp[j]['form']
-                EndDate = LookUp[j]['end']
-                Val = LookUp[j]['val']
-                ValLookedUp = [1]
-                if (('Q' in Frame) or ('q' in Frame)) and (
-                        datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
-                    QorKColumn += ['Q']
-                    LookUpFormList += [Form]
-                    LookUpEndDateList += [EndDate]
-                    LookUpValList += [Val]
-                    ValLookedUpList += [ValLookedUp]
-                elif (('Q' not in Frame) or ('q' not in Frame)) and (
-                        datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
-                    QorKColumn += ['K']
-                    LookUpFormList += [Form]
-                    LookUpEndDateList += [EndDate]
-                    LookUpValList += [Val]
-                    ValLookedUpList += [ValLookedUp]
-            FormResults += [LookUpFormList]
-            EndDateResults += [LookUpEndDateList]
-            ValResults += [LookUpValList]
-            QorKResults += [QorKColumn]
-            ValLookedUpResults += [ValLookedUpList]
-        """
         if LookUpValueExists[i] >= 0:
             LookUp = EDGAR_json[LookUpValue[i]]['units']
             # Automatically find the next json key
@@ -166,25 +124,48 @@ def get_requested_data(LookUpValueExists, EDGAR_json, EDGAR_DEI_json, LookUpValu
             # Using the for loop below to screen the 'frame' json key. This frame key is used to identify whether the data
             # returned is quarterly annual within an annual filings. We also populate our dataframe 'Quarterly or Annual'
             # column using the frame data
-            for j in range(0, LookUpCount):
-                if 'frame' in LookUp[j]:
-                    Frame = LookUp[j]['frame']
+            if LookUpValue[0] == 'D & A':
+                for j in range(0, LookUpCount):
+                    Frame = LookUp[j]['fp']
                     Form = LookUp[j]['form']
                     EndDate = LookUp[j]['end']
                     Val = LookUp[j]['val']
                     ValLookedUp = [LookUpValueExists[i]]
-                    if (('Q' in Frame) or ('q' in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                    if (('Q' in Frame) or ('q' in Frame)) and (
+                            datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                         QorKColumn += ['Q']
                         LookUpFormList += [Form]
                         LookUpEndDateList += [EndDate]
                         LookUpValList += [Val]
                         ValLookedUpList += [ValLookedUp]
-                    elif (('Q' not in Frame) or ('q' not in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                    elif (('Q' not in Frame) or ('q' not in Frame)) and (
+                            datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
                         QorKColumn += ['K']
                         LookUpFormList += [Form]
                         LookUpEndDateList += [EndDate]
                         LookUpValList += [Val]
                         ValLookedUpList += [ValLookedUp]
+
+            else:
+                for j in range(0, LookUpCount):
+                    if 'frame' in LookUp[j]:
+                        Frame = LookUp[j]['frame']
+                        Form = LookUp[j]['form']
+                        EndDate = LookUp[j]['end']
+                        Val = LookUp[j]['val']
+                        ValLookedUp = [LookUpValueExists[i]]
+                        if (('Q' in Frame) or ('q' in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                            QorKColumn += ['Q']
+                            LookUpFormList += [Form]
+                            LookUpEndDateList += [EndDate]
+                            LookUpValList += [Val]
+                            ValLookedUpList += [ValLookedUp]
+                        elif (('Q' not in Frame) or ('q' not in Frame)) and (datetime.strptime(EndDate, ISO8601).date() >= DeltaDate):
+                            QorKColumn += ['K']
+                            LookUpFormList += [Form]
+                            LookUpEndDateList += [EndDate]
+                            LookUpValList += [Val]
+                            ValLookedUpList += [ValLookedUp]
             FormResults += [LookUpFormList]
             EndDateResults += [LookUpEndDateList]
             ValResults += [LookUpValList]
@@ -219,7 +200,6 @@ def data_to_dataframe(FormResults, EndDateResults, ValResults, QorKResults, ValL
     # Dataframe must be double sorted for next step to work properly
     FilingResultsDF.sort_values(by=['End Date', 'Q or K'], inplace=True)
     FilingResultsDF.reset_index(drop=True, inplace=True)
-
     return FilingResultsDF
 
 
@@ -399,7 +379,6 @@ def historic_quote_date(FilingResultsDF, ISO8601):
                         ValidEndDateList += [str(EndDateForQuoteCalc)]
                         ValidDate = 1
                     DayDelta = DayDelta + 1
-
     return ValidEndDateList
 
 
@@ -439,13 +418,24 @@ def merge_dataframes(HistoricQuoteList, HistoricQuoteDateList, FilingResultsDF):
         HistoricQuoteDataframe.rename(columns={HistoricQuoteDataframe.columns[0]: 'Quote Date',
                                                HistoricQuoteDataframe.columns[1]: 'Historic Quote'}, inplace=True)
         ConcatDataFrame = pd.concat([FilingResultsDF, HistoricQuoteDataframe], axis=1)
-        print(ConcatDataFrame)
+        #print(ConcatDataFrame)
     else:
         print(len(HistoricQuoteList), len(HistoricQuoteDateList), len(FilingResultsDF))
         print('Number of data points do not match')
         exit()
 
     return ConcatDataFrame
+
+
+def pe_ratio(ConcatDataFrame):
+    HistoricQuoteList = ConcatDataFrame['Historic Quote'].tolist()
+    EPSList = ConcatDataFrame['EPS'].tolist()
+    PERatioList = []
+    if len(HistoricQuoteList) == len(EPSList):
+        for i in range(0, len(HistoricQuoteList)):
+            PERatioList += [float(HistoricQuoteList[i])/float(EPSList[i])]
+    ConcatDataFrame['PE Ratio'] = PERatioList
+    print(ConcatDataFrame)
 
 
 def general_http_response_codes(response):
@@ -534,11 +524,17 @@ NetIncomeList = ['Net Income',
                  'NetIncomeLoss',
                  'ProfitLoss']
 
-# EPS needs lots of work
 EPSList = ['EPS',
            'EarningsPerShareBasic',
            'EarningsPerShareDiluted']
 
 SharesOutstandingList = ['Shares Outstanding',
-                         'CommonStockSharesOutstanding',
-                         'WeightedAverageNumberOfSharesOutstandingBasic']
+                         'WeightedAverageNumberOfSharesOutstandingBasic',
+                         'CommonStockSharesOutstanding']
+
+EBITList = ['EBIT',
+            'OperatingIncomeLoss']
+
+DepreciationAndAmortization = ['D & A',
+                               'DepreciationDepletionAndAmortization',
+                               'Depreciation']
