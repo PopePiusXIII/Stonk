@@ -1,7 +1,7 @@
 from Functions import *
 
 # User input ticker
-Ticker = 'msft'  # spacs is where iex suffers, need to find out if there's a workaround
+Ticker = 'aapl'  # spacs is where iex suffers, need to find out if there's a workaround
 
 # Values to lookup within the json result, will look up all values in list and will return them as one dataframe column.
 # For example, you will not be able to create a dataframe with revenue and net profit in separate columns
