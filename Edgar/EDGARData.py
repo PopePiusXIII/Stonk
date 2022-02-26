@@ -88,7 +88,10 @@ StopTimer7 = time.perf_counter()
 # This section calculates the PE ratio
 Timer8 = 'Calculate PE Ratio Timer:'
 StartTimer8 = time.perf_counter()
-pe_ratio(ConcatDataFrame)
+try:
+    pe_ratio(ConcatDataFrame)
+except:
+    print(ConcatDataFrame)
 StopTimer8 = time.perf_counter()
 
 StopOverallTimer = time.perf_counter()

@@ -311,7 +311,7 @@ def calculate_quarterly(k, FilingResultsDF, ISO8601, LookUpValueList):
                 FilingResultsDF.at[ValidAnnualValList[i], 'Q or K'] = 'Q - Calc'
         # If the dataframe is empty then exit
         if len(FilingResultsDF) == 0:
-            print('Query returned no values, check SEC database to find additional json tags')
+            print(ColumnHeader, 'Query returned no values, check SEC database to find additional json tags')
             exit()
 
     return FilingResultsDF
@@ -530,11 +530,14 @@ EPSList = ['EPS',
 
 SharesOutstandingList = ['Shares Outstanding',
                          'WeightedAverageNumberOfSharesOutstandingBasic',
-                         'CommonStockSharesOutstanding']
+                         'CommonStockSharesOutstanding',
+                         'PreferredStockValueOutstanding']
 
 EBITList = ['EBIT',
-            'OperatingIncomeLoss']
+            'OperatingIncomeLoss',
+            'CostsAndExpenses']
 
 DepreciationAndAmortization = ['D & A',
+                               'DepreciationAndAmortization',
                                'DepreciationDepletionAndAmortization',
                                'Depreciation']
