@@ -20,16 +20,9 @@ class Estimate:
 
     @staticmethod
     def __growth_rates(series):
-        growth_rate = []
-        for i in range(1, len(series), 1):
-            try:
-                val2 = float(series[i])
-                val1 = float(series[i-1])
-                growth_rate.append(val1 / val2 - 1)
-            except:
-                print("prob just a header")
-                pass
-        return growth_rate
+        time_period = len(series) - 1
+        cagr = (series[1]/series[-1]) ** (1/time_period) - 1
+        return cagr
 
     def __price_growth(self, eps, year, earnings_ratio):
         return (eps[self.time_period + Estimate.current_year] * earnings_ratio) / ((1 + self.rate_of_return) ** year)
@@ -41,7 +34,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.median(self.eps_growth_rates)
+        avg_growth_rate = self.eps_growth_rates
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.eps[0], i, avg_growth_rate)
 
@@ -53,7 +46,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.median(self.owners_earnings_per_share_growth_rates)
+        avg_growth_rate = self.owners_earnings_per_share_growth_rates
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.owner_earnings_per_share[0], i, avg_growth_rate)
 
@@ -66,7 +59,7 @@ class Estimate:
         price = {}
         eps = {}
 
-        avg_growth_rate = stat.median(self.ebitda_growth_rates)
+        avg_growth_rate = self.ebitda_growth_rates
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(self.stock.ebitda_per_share[0], i, avg_growth_rate)
 
@@ -84,7 +77,7 @@ class Estimate:
 
         fcfpe = self.stock.market_price / fcfeps
 
-        avg_growth_rate = stat.median(self.free_cash_flow_growth_rates)
+        avg_growth_rate = self.free_cash_flow_growth_rates
         # Replace pe with poe and EPS with oeps and run eval
         for i in range(0, self.time_period+1, 1):
             eps[i+Estimate.current_year] = self.__eps_growth(fcfeps, i, avg_growth_rate)

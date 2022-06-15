@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2eb5f051-f42d-4a0f-919f-23e2f742431d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/Stonk.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Stonk.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MacroTrendScrape.py" beforeDir="false" afterPath="$PROJECT_DIR$/MacroTrendScrape.py" afterDir="false" />
-    </list>
+    <list default="true" id="2eb5f051-f42d-4a0f-919f-23e2f742431d" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -96,28 +92,29 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/FairValue.py</url>
-          <line>63</line>
+          <line>55</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/FairValue.py</url>
-          <line>50</line>
+          <line>42</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/FairValue.py</url>
-          <line>76</line>
+          <line>68</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/FairValue.py</url>
-          <line>94</line>
+          <line>86</line>
           <option name="timeStamp" value="8" />
         </line-breakpoint>
       </breakpoints>
