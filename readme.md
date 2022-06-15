@@ -1,6 +1,6 @@
 msfttrial is the example of how to use this code. All data comes from macrotrends and includes its historical values.
 
-calculations made so far are
+calculations made all use discounted cash flows but with different earnings (https://www.investopedia.com/terms/d/dcf.asp) 
   - owners earnings
   - free cash flow
   - basic eps growth

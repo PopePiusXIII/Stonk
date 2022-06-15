@@ -1,0 +1,14 @@
+
+GAAP_Taxonomy_2022.xlsx
+IFRS_Taxonomy_2022.xlsx
+MSFT_CompanyFacts.json
+ParseAllJsonKeys.py
+UniqueIFRS-Full.csv
+UniqueUS-GAAP.csv
+Edgar/__pycache__/Functions.cpython-39.pyc
+.idea/misc.xml
+.idea/workspace.xml
+Edgar/2007-2023OpenCloseMarketDays.txt
+Edgar/2007-2023OpenCloseMarketDays.xlsx
+Edgar/__pycache__/UserInputs.cpython-39.pyc
+Edgar/Holidays2007-2023.csv
